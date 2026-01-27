@@ -1,0 +1,5 @@
+from flask import Flask
+app =Flask(App)
+@app.route("/")
+def home():
+    return print('THis is my first web using flask')

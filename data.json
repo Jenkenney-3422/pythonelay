@@ -1,0 +1,10 @@
+{
+    "server": "123.45.2.12",
+    "status": "Running",
+    "Matrics": {
+        "INFO": 99,
+        "ERROR": 108,
+        "WARNING": 121
+    },
+    "timestamp": "2025-07-23T09:49:34.519931"
+}

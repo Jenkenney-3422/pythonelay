@@ -1,0 +1,21 @@
+OrdersId,City,Product,Price,Quantity,Dates
+1,hydrabad,tofu,909,21,2025-07-21
+2,himachal,bread,40,21,2025-07-22
+3,rajesthan,tofu,34,15,2025-07-23
+4,Mumbai,banana,685,18,2025-07-24
+5,noida,banana,34,18,2025-07-25
+6,rajesthan,milk,40,19,2025-07-26
+7,Madhya pradesh,milk,78,22,2025-07-27
+8,Mumbai,bread,40,12,2025-07-28
+9,himachal,banana,100,13,2025-07-29
+10,hydrabad,dates,134,12,2025-07-30
+11,noida,milk,134,22,2025-07-31
+12,himachal,eggs,134,17,2025-08-01
+13,Madhya pradesh,dates,134,16,2025-08-02
+14,hydrabad,tofu,909,15,2025-08-03
+15,rajesthan,bread,453,15,2025-08-04
+16,rajesthan,bread,134,12,2025-08-05
+17,noida,bread,134,22,2025-08-06
+18,Mumbai,milk,123,19,2025-08-07
+19,himachal,Apple,685,18,2025-08-08
+20,noida,Apple,909,21,2025-08-09

@@ -1,0 +1,10 @@
+{
+    "server": "192.168.1.10",
+    "status": "running",
+    "metrics": {
+        "ERROR": 3,
+        "WARNING": 2,
+        "INFO": 5
+    },
+    "timestamp": "2025-07-22T16:02:36.935999"
+}

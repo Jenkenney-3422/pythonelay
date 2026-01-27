@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow Pro Dashboard</title>
+    <a href="http://172.26.249.76:8000/docs" target="_blank" 
+   class="text-xs text-blue-400 hover:text-blue-600 underline mb-4 block">
+   Open API Documentation ↗
+</a>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-blue-600">TaskFlow Pro</h1>
+        <div id="status" class="text-xs font-semibold mb-2 text-gray-400 uppercase tracking-widest">
+          Connecting to API...
+        </div>
+        <div class="flex mb-4">
+            <input id="taskInput" type="text" placeholder="Enter a new task..." 
+                   class="flex-1 border p-2 rounded-l-lg focus:outline-none">
+            <button onclick="addTask()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600">Add</button>
+        </div>
+
+        <ul id="taskList" class="space-y-2">
+            </ul>
+    </div>
+
+    <script>
+    // 1. UPDATE THIS with your hostname -I IP address!
+    const API_URL = "http://172.26.249.76:8000/tasks"; 
+
+    async function fetchTasks() {
+        const statusEl = document.getElementById('status');
+        const list = document.getElementById('taskList');
+
+        try {
+            const res = await fetch(API_URL);
+            if (!res.ok) throw new Error("Server error");
+            
+            const tasks = await res.json();
+            
+            // Update Status to Online
+            statusEl.innerText = "● API Online";
+            statusEl.className = "text-xs font-semibold mb-2 text-green-500 uppercase tracking-widest";
+
+            // Render Tasks
+            list.innerHTML = '';
+            tasks.forEach(task => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center p-2 bg-gray-50 rounded border">
+                        <span>${task.title}</span>
+                        <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700">Delete</button>
+                    </li>`;
+            });
+        } catch (err) {
+            // Update Status to Offline
+            statusEl.innerText = "○ API Offline - Check Docker";
+            statusEl.className = "text-xs font-semibold mb-2 text-red-500 uppercase tracking-widest";
+            console.error("Fetch error:", err);
+        }
+    }
+
+    async function addTask() {
+    const input = document.getElementById('taskInput');
+    if (!input.value) return;
+
+    await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id: 0,                   // We send 0, server will change it
+            title: input.value, 
+            description: "Added from Web",
+            is_completed: false      // Required by your Pydantic model
+        })
+    });
+    input.value = '';
+    fetchTasks();
+}
+
+async function deleteTask(id) {
+    await fetch(`${API_URL}/${id}`, { 
+        method: 'DELETE',
+        headers: {
+            'X-API-KEY': 'nemoChessHazarD_2200' // Your secret key from main.py
+        }
+    });
+    fetchTasks();
+}
+
+    // Initial load
+    fetchTasks();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+INFO Server started at 2025-07-19 10:00:00
+INFO Listening on port 8080
+WARNING Disk space at 80%
+INFO Connection established from 192.168.1.100
+ERROR Failed to connect to database
+INFO Health check passed
+WARNING High memory usage detected
+ERROR Disk quota exceeded
+INFO Scheduled backup completed
+INFO Server shutting down at 2025-07-19 18:00:00
+INFO Starting server
+WARNING High CPU usage
+ERROR Database failure
+INFO Connection accepted
+ERROR Disk full
+WARNING Memory usage warning
+INFO Shutdown complete

@@ -1,0 +1,9 @@
+ERROR:root:Division by zero: division by zero
+2025-07-23 16:03:01,587 - ERROR - Error occurred: division by zero
+2025-07-23 16:08:18,861 | INFO | MyLogger | App started
+2025-07-23 16:08:18,862 | WARNING | MyLogger | Low memory
+2025-07-23 16:08:18,862 | ERROR | MyLogger | Service failed to respond
+2025-07-23 16:08:18,862 - ERROR - Error occurred: division by zero
+2025-07-23 16:11:03,656 | INFO | MyLogger | App started
+2025-07-23 16:11:03,656 | WARNING | MyLogger | Low memory
+2025-07-23 16:11:03,656 | ERROR | MyLogger | Service failed to respond
