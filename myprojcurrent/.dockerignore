@@ -1,4 +1,16 @@
+# Ignore everything
 **/*
+
+# Explicitly allow only what is needed for the BUILD
 !main.py
-!Dockerfile
 !requirements.txt
+!Dockerfile
+!index.html
+
+# Ignore local data/logs so they don't bloat the image
+security.log
+tasks.json
+__pycache__/
+*.pyc
+.venv/
+.vscode/

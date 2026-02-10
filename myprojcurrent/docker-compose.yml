@@ -1,11 +1,10 @@
-
-
 services:
   api:
     build: .
-    container_name: taskflow-pro
     ports:
       - "8000:8000"
     volumes:
+      # This maps your local files to the container
       - ./tasks.json:/app/tasks.json
+      - ./security.log:/app/security.log
     restart: always

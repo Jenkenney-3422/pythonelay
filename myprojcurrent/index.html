@@ -4,93 +4,234 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskFlow Pro Dashboard</title>
-    <a href="http://172.26.249.76:8000/docs" target="_blank" 
-   class="text-xs text-blue-400 hover:text-blue-600 underline mb-4 block">
-   Open API Documentation ↗
-</a>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-100 p-8">
+   <div id="toast" class="z-50 fixed top-10 right-5 bg-green-600 text-white px-8 py-4 rounded-xl shadow-2xl transform -translate-y-full opacity-0 transition-all duration-500 ease-out pointer-events-none font-bold">
+    ✅ Changes Saved!
+</div>
+    
     <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-4 text-blue-600">TaskFlow Pro</h1>
-        <div id="status" class="text-xs font-semibold mb-2 text-gray-400 uppercase tracking-widest">
-          Connecting to API...
-        </div>
-        <div class="flex mb-4">
-            <input id="taskInput" type="text" placeholder="Enter a new task..." 
-                   class="flex-1 border p-2 rounded-l-lg focus:outline-none">
-            <button onclick="addTask()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600">Add</button>
+        <h1 class="text-2xl font-bold mb-2 text-blue-600">TaskFlow Pro</h1>
+        <a href="http://172.26.249.76:8000/docs" target="_blank" class="text-xs text-blue-400 hover:text-blue-600 underline mb-4 block">Open API Documentation ↗</a>
+         
+        <div id="statsBar" class="grid grid-cols-3 gap-2 mb-6 text-center">
+            
+            <div class="bg-blue-50 p-2 rounded border border-blue-100">
+                <p class="text-[10px] text-blue-500 uppercase font-bold">Total</p>
+                <p id="totalTasks" class="text-lg font-bold text-blue-700">0</p>
+            </div>
+            <div class="bg-green-50 p-2 rounded border border-green-100">
+                <p class="text-[10px] text-green-500 uppercase font-bold">Score</p>
+                <p id="completionScore" class="text-lg font-bold text-green-700">0%</p>
+            </div>
+            <div class="bg-yellow-50 p-2 rounded border border-yellow-100">
+                <p class="text-[10px] text-yellow-600 uppercase font-bold">Pending</p>
+                <p id="pendingTasks" class="text-lg font-bold text-yellow-700">0</p>
+            </div>
         </div>
 
-        <ul id="taskList" class="space-y-2">
-            </ul>
+        <div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">Connecting...</div>
+
+                <div class="space-y-2 mb-4">
+            <div class="flex flex-col gap-2">
+                <input id="taskInput" type="text" placeholder="Task title..." class="border p-2 rounded-lg focus:outline-none text-sm w-full">
+                <div class="flex">
+                    <input id="descInput" type="text" placeholder="Add description (optional)..." class="flex-1 border p-2 rounded-l-lg focus:outline-none text-xs bg-gray-50">
+                    <button onclick="addTask()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 transition">Add</button>
+                </div>
+            </div>
+            <input id="searchInput" type="text" oninput="fetchTasks()" placeholder="🔍 Search tasks..." class="w-full border p-2 rounded-lg focus:outline-none text-sm bg-gray-50">
+        </div>
+
+        <ul id="taskList" class="space-y-2"></ul>
+        <div class="mt-8 pt-4 border-t border-red-100">
+    <button onclick="clearAllTasks()" class="w-full py-2 text-xs font-bold text-red-400 hover:text-red-600 border border-red-100 hover:border-red-200 rounded-lg transition uppercase tracking-widest">
+        🗑️ Clear All Data
+    </button>
+    <p class="text-[10px] text-center text-gray-400 mt-4 italic">
+       Last Sync: <span id="lastUpdated">Loading...</span>
+</p>
+</div>
     </div>
 
-    <script>
-    // 1. UPDATE THIS with your hostname -I IP address!
+<script>
     const API_URL = "http://172.26.249.76:8000/tasks"; 
 
     async function fetchTasks() {
         const statusEl = document.getElementById('status');
         const list = document.getElementById('taskList');
+        const searchTerm = document.getElementById('searchInput').value;
 
         try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error("Server error");
-            
+            // Include Search parameter in the URL
+            const res = await fetch(`${API_URL}?Search=${searchTerm}`);
             const tasks = await res.json();
             
-            // Update Status to Online
             statusEl.innerText = "● API Online";
-            statusEl.className = "text-xs font-semibold mb-2 text-green-500 uppercase tracking-widest";
+            statusEl.className = "text-[10px] font-semibold mb-4 text-green-500 uppercase tracking-widest";
 
-            // Render Tasks
             list.innerHTML = '';
             tasks.forEach(task => {
-                list.innerHTML += `
-                    <li class="flex justify-between items-center p-2 bg-gray-50 rounded border">
-                        <span>${task.title}</span>
-                        <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700">Delete</button>
-                    </li>`;
-            });
+    const completedClass = task.is_completed ? 'line-through text-gray-400' : 'text-gray-700 font-semibold';
+    const desc = task.description || ''; 
+    const date = task.created_at || '';
+    
+    list.innerHTML += `
+        <li class="flex flex-col p-3 bg-gray-50 rounded border hover:shadow-sm transition gap-2">
+            <div class="flex justify-between items-center">
+                <span class="${completedClass} text-sm">${task.title}</span>
+                <div class="flex gap-2">
+                    <button onclick="saveChanges(${task.id}, ${task.is_completed}, '${task.title}', document.getElementById('${task.id}_desc').value, '${date}')" class="text-blue-400 hover:text-blue-600 text-xs">💾</button>
+                    <button onclick="toggleTask(${task.id}, ${task.is_completed}, '${task.title}', document.getElementById('${task.id}_desc').value, '${date}')" class="text-green-500 hover:text-green-700">✓</button>
+                    <button onclick="deleteTask(${task.id})" class="text-red-400 hover:text-red-600">✕</button>
+                </div>
+            </div>
+            <input id="${task.id}_desc" type="text" value="${desc}" 
+                class="text-[11px] w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-300 focus:outline-none text-gray-500" 
+                placeholder="No description...">
+        </li>`;
+});
+            updateStats();
+            
         } catch (err) {
-            // Update Status to Offline
-            statusEl.innerText = "○ API Offline - Check Docker";
-            statusEl.className = "text-xs font-semibold mb-2 text-red-500 uppercase tracking-widest";
-            console.error("Fetch error:", err);
+            statusEl.innerText = "○ API Offline";
+            statusEl.className = "text-[10px] font-semibold mb-4 text-red-500 uppercase tracking-widest";
         }
+    }
+    async function clearAllTasks() {
+    // 1. Ask for confirmation
+    if (!confirm("⚠️ Are you sure? This will delete ALL tasks permanently!")) return;
+
+    try {
+        /*const res = await fetch("http://172.26.249.76:8000/system/clear_memory", {
+            method: 'DELETE',
+            headers: { 
+                'X-API-KEY': '12345y@' // Your secret key
+            }
+        });*/
+        const res = await fetch(`${API_URL.replace('/tasks', '')}/system/clear_memory`, {
+            method: 'DELETE',
+            headers: { 
+                'X-API-KEY': 'nemoChessHazarD_2200',
+                'Content-Type': 'application/json' 
+        }
+});
+
+        if (res.ok) {
+            alert("🧹 System Cleared!");
+            fetchTasks(); // Refresh the UI
+        } else {
+            const err = await res.json();
+            alert("❌ Access Denied: " + err.detail);
+        }
+    } catch (err) {
+        console.error("Clear failed:", err);
+        alert("❌ Server Error");
+    }
+}
+
+   async function updateStats() {
+    try {
+        const res = await fetch(`${API_URL}/stats`);
+        const stats = await res.json();
+        
+        console.log("Stats received:", stats); // Add this to debug!
+
+        document.getElementById('totalTasks').innerText = stats.total;
+        document.getElementById('completionScore').innerText = stats.completion_score;
+        document.getElementById('pendingTasks').innerText = stats.pending;
+        
+        // This ID must match the span ID in your HTML
+        if(stats.last_updated) {
+            document.getElementById('lastUpdated').innerText = stats.last_updated;
+        }
+    } catch (e) {
+        console.error("Stats update failed", e);
+    }
     }
 
     async function addTask() {
-    const input = document.getElementById('taskInput');
-    if (!input.value) return;
+    const titleInput = document.getElementById('taskInput');
+    const descInput = document.getElementById('descInput');
+    
+    if (!titleInput.value) return;
 
     await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            id: 0,                   // We send 0, server will change it
-            title: input.value, 
-            description: "Added from Web",
-            is_completed: false      // Required by your Pydantic model
+            id: 0, 
+            title: titleInput.value, 
+            description: descInput.value, 
+            is_completed: false 
         })
     });
-    input.value = '';
+
+    titleInput.value = '';
+    descInput.value = '';
     fetchTasks();
 }
-
-async function deleteTask(id) {
-    await fetch(`${API_URL}/${id}`, { 
-        method: 'DELETE',
-        headers: {
-            'X-API-KEY': 'nemoChessHazarD_2200' // Your secret key from main.py
-        }
+    async function toggleTask(id, currentStatus, title, description, createdAt) {
+    await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id: id, 
+            title: title, 
+            is_completed: !currentStatus,
+            description: description,
+            created_at: createdAt
+        })
     });
     fetchTasks();
-}
+    }
 
-    // Initial load
+   function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.innerText = message;
+    
+    // 1. Reset position and show (Slide down from top)
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    
+    // 2. Keep it visible for 3.5 seconds (plenty of time to see)
+    setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 4500); 
+}
+    
+    async function saveChanges(id, is_completed, title, description, createdAt) {
+    await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id: id, 
+            title: title, 
+            is_completed: is_completed,
+            description: description,
+            created_at: createdAt
+        })
+    });
+    showToast("💾 Changes Saved!");
     fetchTasks();
+    }
+
+
+    async function deleteTask(id) {
+        await fetch(`${API_URL}/${id}`, { 
+            method: 'DELETE',
+            headers: { 'X-API-KEY': 'nemoChessHazarD_2200' }
+        });
+        fetchTasks();
+    }
+
+    window.onload = () => {
+        document.getElementById('taskInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+        fetchTasks();
+    };
 </script>
 </body>
 </html>
