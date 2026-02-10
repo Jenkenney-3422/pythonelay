@@ -7,7 +7,7 @@ from typing import List
 
 # --- CONFIGURATION ---
 MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
-SAVE_PATH = "./my_local_model"
+SAVE_PATH = "./my_local_model2"
 
 # --- AUTO-SAVE LOGIC ---
 if not os.path.exists(SAVE_PATH):
