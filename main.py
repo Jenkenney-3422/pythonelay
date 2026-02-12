@@ -27,7 +27,7 @@ collection = db_mongo.tasks
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5500", # Still allows local testing
-        "https://new-front-end-0311.onrender.com"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
+        "https://taskflow-uibest.onrender.com"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
