@@ -40,7 +40,10 @@ class Task(BaseModel):
     created_at: Optional[str] = None
     is_completed: bool = False
 
-SECRET_API_KEY = os.getenv("API_KEY", "nemoChessHazarD_2200")
+SECRET_API_KEY = os.getenv("API_KEY")
+
+if not SECRET_API_KEY:
+    logging.error("CRITICAL: API_KEY environment variable is NOT SET!")
 
 # --- HELPERS ---
 def verify_admin(x_api_key: str, request: Request):
