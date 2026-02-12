@@ -642,7 +642,7 @@ plt.xlabel("Cities")
 plt.ylabel(" Revenue ($)")
 plt.show()
 """
-"""
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -711,7 +711,7 @@ plt.show()
 answer =bool(input("enter ans for quit: 1 else 0"))
 if(answer ==True):
     del daily_revenue,top_products,city_revenue,df,data
-"""   
+ 
 """
 import numpy as np
 import pandas as pd
@@ -789,7 +789,7 @@ plt.tight_layout()
 plt.show()
 pivot = df.pivot_table(values="Revenue", index="City", columns="Product", aggfunc="sum", fill_value=0)
 """
-
+"""
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -855,6 +855,8 @@ gc.collect()
 print("\n✅ Visualization closed and memory freed!")
 
 
+
+"""
 """
 📅 30-Day Data Analyst Roadmap
 Week 1 – Python Foundations for Data Analysis (Days 1–7)
@@ -940,7 +942,7 @@ so you can start your Week 1 & 2 projects immediately without hunting for data.
 Do you want me to prepare and give you these datasets next?
 Ask ChatGPT
 
-"""
+
 
 import pandas as pd
 
@@ -990,4 +992,4 @@ print(df.sort_values(by="Quantity", ascending=False))
 print(df.sort_values(by=["Price", "Quantity"], ascending=[True, False]))
 top_products = df.query("Quantity > 10").sort_values(by="Price", ascending=False).head(3)
 print(top_products)
-
+"""
