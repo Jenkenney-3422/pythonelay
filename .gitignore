@@ -2,3 +2,16 @@ __pycache__/
 *.pyc
 security.log
 tasks.json
+# Python garbage
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+.env
+venv/
+env/
+
+# VS Code settings
+.vscode/
