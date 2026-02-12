@@ -7,9 +7,8 @@ import os
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
-# Logging setup
+# Logging setup - Adjusted for Cloud (Streams to console/logs)
 logging.basicConfig(
-    filename="security.log",
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -21,62 +20,62 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"], # This allows all headers, including X-API-KEY
-    expose_headers=["*"],
+    allow_headers=["*"],
 )
+
 class Task(BaseModel):
     id: int
     title: str
-    description: Optional[str] = None  # Fixed: was True
+    description: Optional[str] = None
     created_at: Optional[str] = None
     is_completed: bool = False
 
 db: List[Task] = []
-DATA_FILE = "tasks.json"
-SCERET_API_KEY = "nemoChessHazarD_2200"
 
-# ----- Persistence Logic -----
+# --- Render/Cloud Optimization ---
+# 1. Use an absolute path for persistent disks if available
+DATA_FILE = os.getenv("/app/data/tasks.json", "tasks.json") 
+# 2. Get API Key from Environment Variables (Security)
+SECRET_API_KEY = os.getenv("API_KEY", "nemoChessHazarD_2200")
+
 def verify_admin(x_api_key: str, request: Request):
-    if x_api_key != SCERET_API_KEY:
+    if x_api_key != SECRET_API_KEY:
         client_ip = request.client.host
-        logging.warning(f"UNAUTHORIZED ACCESS Attempt: IP {client_ip} tried to access {request.url}")
+        logging.warning(f"UNAUTHORIZED ACCESS Attempt: IP {client_ip}")
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API KEY")
 
 def save_db():
-    with open(DATA_FILE, "w") as f:
-        json_data = [task.model_dump() for task in db]
-        json.dump(json_data, f, indent=4)
+    try:
+        with open(DATA_FILE, "w") as f:
+            json_data = [task.model_dump() for task in db]
+            json.dump(json_data, f, indent=4)
+    except Exception as e:
+        logging.error(f"Failed to save data: {e}")
 
 def load_db():
     global db
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            data = json.load(f)
-            db = [Task(**item) for item in data]
+        try:
+            with open(DATA_FILE, "r") as f:
+                data = json.load(f)
+                db = [Task(**item) for item in data]
+        except Exception as e:
+            logging.error(f"Failed to load data: {e}")
 
 load_db()
 
-# -- Routes ---
+# --- Health Check (Required for Render) ---
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
-"""@app.get("/tasks/stats")
-def get_stats():
-    total = len(db)
-    completed = len([t for t in db if t.is_completed])
-    pending = total - completed
-    score = f"{(completed/total)*100 if total > 0 else 0}%"
-    return {
-    "total": total,
-    "completed": completed,
-    "pending": pending,
-    "completion_score": f"{(completed/total)*100 if total > 0 else 0}%"
-}"""
+# -- Routes (Rest of your logic remains the same) ---
+
 @app.get("/tasks/stats")
 def get_stats():
     total = len(db)
     completed = len([t for t in db if t.is_completed])
     pending = total - completed
-    
-    # Get the last modified time of the physical file
     last_updated = "Never"
     if os.path.exists(DATA_FILE):
         mtime = os.path.getmtime(DATA_FILE)
@@ -87,7 +86,7 @@ def get_stats():
         "completed": completed,
         "pending": pending,
         "completion_score": f"{(completed/total)*100 if total > 0 else 0}%",
-        "last_updated": last_updated  # Added this field
+        "last_updated": last_updated
     }
 
 @app.get("/tasks", response_model=List[Task])
