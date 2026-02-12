@@ -28,7 +28,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://127.0.0.1:5500", # Still allows local testing
-        "https://taskflow-frontend.onrender.com" # Replace with your REAL frontend URL
+        "https://taskflow-uri.onrender.com" # Replace with your REAL frontend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
