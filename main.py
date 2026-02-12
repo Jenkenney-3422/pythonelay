@@ -26,7 +26,8 @@ collection = db_mongo.tasks
 # In main.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
+    allow_origins=["http://127.0.0.1:5500", # Still allows local testing
+        "https://new-front-end-0311.onrender.com"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
