@@ -12,6 +12,9 @@ tasks.json
 .env
 venv/
 env/
+myenv/
 
 # VS Code settings
 .vscode/
+keydata.env
+pythontest.py/
