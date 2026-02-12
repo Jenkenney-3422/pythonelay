@@ -1,19 +1,26 @@
+import os
 from fastapi import FastAPI, HTTPException, Header, Request
+from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-import json
-import os
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
-# Logging setup - Adjusted for Cloud (Streams to console/logs)
+# Logging setup
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 app = FastAPI(title="TASKFLOW PRO")
+
+# --- DATABASE CONNECTION ---
+# On Render, set an Environment Variable MONGODB_URI with your string
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://admin:Pokiman5459deja@clustermin.uhswwrh.mongodb.net/?appName=ClusterMin")
+client = AsyncIOMotorClient(MONGO_URI)
+db_mongo = client.taskflow_db
+collection = db_mongo.tasks
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,109 +33,77 @@ app.add_middleware(
 class Task(BaseModel):
     id: int
     title: str
-    description: Optional[str] = None
+    description: Optional[str] = ""
     created_at: Optional[str] = None
     is_completed: bool = False
 
-db: List[Task] = []
-
-# --- Render/Cloud Optimization ---
-# 1. Use an absolute path for persistent disks if available
-DATA_FILE = os.getenv("/app/data/tasks.json", "tasks.json") 
-# 2. Get API Key from Environment Variables (Security)
 SECRET_API_KEY = os.getenv("API_KEY", "nemoChessHazarD_2200")
 
+# --- HELPERS ---
 def verify_admin(x_api_key: str, request: Request):
     if x_api_key != SECRET_API_KEY:
-        client_ip = request.client.host
-        logging.warning(f"UNAUTHORIZED ACCESS Attempt: IP {client_ip}")
+        logging.warning(f"UNAUTHORIZED ACCESS Attempt from IP {request.client.host}")
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API KEY")
 
-def save_db():
-    try:
-        with open(DATA_FILE, "w") as f:
-            json_data = [task.model_dump() for task in db]
-            json.dump(json_data, f, indent=4)
-    except Exception as e:
-        logging.error(f"Failed to save data: {e}")
+# --- ROUTES ---
 
-def load_db():
-    global db
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r") as f:
-                data = json.load(f)
-                db = [Task(**item) for item in data]
-        except Exception as e:
-            logging.error(f"Failed to load data: {e}")
-
-load_db()
-
-# --- Health Check (Required for Render) ---
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
-
-# -- Routes (Rest of your logic remains the same) ---
+    return {"status": "healthy", "database": "mongodb"}
 
 @app.get("/tasks/stats")
-def get_stats():
-    total = len(db)
-    completed = len([t for t in db if t.is_completed])
+async def get_stats():
+    total = await collection.count_documents({})
+    completed = await collection.count_documents({"is_completed": True})
     pending = total - completed
-    last_updated = "Never"
-    if os.path.exists(DATA_FILE):
-        mtime = os.path.getmtime(DATA_FILE)
-        last_updated = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+    score = f"{(completed/total)*100 if total > 0 else 0}%"
 
     return {
         "total": total,
         "completed": completed,
         "pending": pending,
-        "completion_score": f"{(completed/total)*100 if total > 0 else 0}%",
-        "last_updated": last_updated
+        "completion_score": score,
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
 @app.get("/tasks", response_model=List[Task])
-def get_tasks(completed: Optional[bool] = None, Search: Optional[str] = None, limit: int = 10):
-    results = sorted(db, key=lambda x: x.created_at or "", reverse=True)
-    if completed is not None:
-        results = [t for t in results if t.is_completed == completed]
+async def get_tasks(Search: Optional[str] = None, limit: int = 20):
+    query = {}
     if Search:
-        results = [t for t in results if Search.lower() in t.title.lower()]
-    return results[:limit]
+        query = {"title": {"$regex": Search, "$options": "i"}}
+    
+    cursor = collection.find(query).sort("created_at", -1).limit(limit)
+    tasks = await cursor.to_list(length=limit)
+    return tasks
 
 @app.post("/tasks", status_code=201)
-def create_tasks(task: Task):
+async def create_task(task: Task):
     if task.id == 0:
-        task.id = max([t.id for t in db], default=0) + 1
+        # Find highest ID to auto-increment
+        last_task = await collection.find_one(sort=[("id", -1)])
+        task.id = (last_task["id"] + 1) if last_task else 1
+    
     task.created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    db.append(task)
-    save_db()
-    return {"message": "Successfully created Task", "task": task}
+    await collection.insert_one(task.model_dump())
+    return {"message": "Task created", "task": task}
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, updated_task: Task):
-    for index, task in enumerate(db):
-        if task.id == task_id:
-            db[index] = updated_task
-            save_db()
-            return {"message": "Task updated!"}
-    raise HTTPException(status_code=404, detail="Task Not Found")
+async def update_task(task_id: int, updated_task: Task):
+    result = await collection.replace_one({"id": task_id}, updated_task.model_dump())
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Task Not Found")
+    return {"message": "Task updated!"}
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int, request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
+async def delete_task(task_id: int, request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
     verify_admin(x_api_key, request)
-    for index, task in enumerate(db):
-        if task.id == task_id:
-            db.pop(index)
-            save_db()
-            return {"message": "Task Deleted"}
-    raise HTTPException(status_code=404, detail="Task Not Found")
+    result = await collection.delete_one({"id": task_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task Not Found")
+    return {"message": "Task Deleted"}
 
 @app.delete("/system/clear_memory")
-def clear_all_task(request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
+async def clear_all_task(request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
     verify_admin(x_api_key, request)
-    db.clear()
-    save_db()
-    return {"message": "Cleared all data"}
+    await collection.delete_many({})
+    return {"message": "Cleared all data from MongoDB"}
