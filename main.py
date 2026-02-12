@@ -26,10 +26,7 @@ collection = db_mongo.tasks
 # In main.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500", # Still allows local testing
-        "https://taskflow-uri.onrender.com" # Replace with your REAL frontend URL
-    ],
+    allow_origins=["*"],  # In production, specify your frontend URL(s) here
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
