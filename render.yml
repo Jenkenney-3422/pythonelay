@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: taskflow-pro
+    env: docker
+    plan: free
+    
+    # This setting helps Render check if your app is alive
+    healthCheckPath: /health
+    
+    # Environment variables
+    envVars:
+      - key: API_KEY
+        value: nemoChessHazarD_2200
+      - key: PORT
+        value: 8000
+
+# Note: Render Free Tier does not support persistent volumes (disks).
+# Your tasks.json will reset if the server restarts unless you upgrade to a paid plan.
