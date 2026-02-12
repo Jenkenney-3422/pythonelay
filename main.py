@@ -7,6 +7,7 @@ from datetime import datetime
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
+
 # Logging setup
 logging.basicConfig(
     level=logging.WARNING,
