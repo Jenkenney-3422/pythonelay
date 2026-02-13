@@ -55,7 +55,7 @@ def verify_admin(x_api_key: str, request: Request):
         logging.warning(f"UNAUTHORIZED ACCESS Attempt from IP {request.client.host}")
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API KEY")
 
-# --- ROUTES ---
+# --- ROUTES ----
 @app.get("/")
 async def root():
     return {"message": "Backend is running and CORS is configured!"}
