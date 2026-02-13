@@ -120,30 +120,36 @@
     }
 
     async function clearAllTasks() {
-        if (!confirm("⚠️ Are you sure? This will delete ALL tasks permanently!")) return;
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/system/clear_memory`, {
-                method: 'DELETE',
-                headers: { 
-                    'X-API-KEY': API_KEY,
-                    'Content-Type': 'application/json' 
-                }
-            });
-
-            if (res.ok) {
-                alert("🧹 System Cleared!");
-                fetchTasks();
-            } else {
-                const err = await res.json();
-                alert("❌ Access Denied: " + (err.detail || "Check API Key"));
-            }
-        } catch (err) {
-            console.error("Clear failed:", err);
-            alert("❌ Server Error: Is the API URL correct?");
-        }
+    const password = prompt("Enter Admin Password to Wipe Database:");
+    
+    // We compare the input to the variable that Render injected for us
+    // Your GitHub will only show "RENDER_REPLACE_API_KEY" here
+    if (password !== API_KEY) { 
+        alert("❌ Access Denied: Incorrect Password!");
+        return;
     }
 
+    if (!confirm("⚠️ FINAL WARNING: Are you sure?")) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/system/clear_memory`, {
+            method: 'DELETE',
+            headers: { 
+                'X-API-KEY': API_KEY, // This uses the same injected key
+                'Content-Type': 'application/json' 
+            }
+        });
+
+        if (res.ok) {
+            alert("🧹 System Cleared!");
+            fetchTasks();
+        } else {
+            alert("❌ Server rejected the request.");
+        }
+    } catch (err) {
+        alert("❌ Server Error: Connection failed.");
+    }
+}
     async function updateStats() {
         try {
             const res = await fetch(`${API_URL}/stats`);
