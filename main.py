@@ -15,6 +15,11 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="TASKFLOW PRO")
+origins = [
+    "http://127.0.0.1:5500",    # Local VS Code Live Server
+    "http://localhost:5500",    # Local testing
+    "https://taskflow-uibest.onrender.com", # Your Render Static Site URL
+]
 
 # --- DATABASE CONNECTION ---
 # On Render, set an Environment Variable MONGODB_URI with your string
@@ -26,8 +31,7 @@ collection = db_mongo.tasks
 # In main.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500", # Still allows local testing
-        "https://taskflow-uibest.onrender.com"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
+    allow_origins=origins,  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +56,9 @@ def verify_admin(x_api_key: str, request: Request):
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API KEY")
 
 # --- ROUTES ---
+@app.get("/")
+async def root():
+    return {"message": "Backend is running and CORS is configured!"}
 
 @app.get("/health")
 def health_check():
