@@ -18,7 +18,7 @@ app = FastAPI(title="TASKFLOW PRO")
 
 # --- DATABASE CONNECTION ---
 # On Render, set an Environment Variable MONGODB_URI with your string
-MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://admin:Pokiman5459deja@clustermin.uhswwrh.mongodb.net/?appName=ClusterMin")
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://userAdmin:Pokiman5459deja@clustermin.uhswwrh.mongodb.net/?appName=ClusterMin")
 client = AsyncIOMotorClient(MONGO_URI)
 db_mongo = client.taskflow_db
 collection = db_mongo.tasks
