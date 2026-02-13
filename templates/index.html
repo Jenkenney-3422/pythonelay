@@ -90,36 +90,35 @@
 
     // 1. THE CHEF: Helper to render each task card
     function renderTask(task) {
-        let mediaHtml = "";
-        if (task.media_url) {
-            if (task.media_type && task.media_type.startsWith('image/')) {
-                mediaHtml = `<div class="mt-2">
-                    <img src="${task.media_url}" class="rounded-lg max-w-full h-auto border shadow-sm cursor-pointer hover:opacity-90 transition" onclick="window.open('${task.media_url}', '_blank')">
-                </div>`;
-            } else {
-                mediaHtml = `<div class="mt-2">
-                    <a href="${task.media_url}" target="_blank" class="inline-flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-100 transition border border-blue-100 w-full justify-center">📄 View Document</a>
-                </div>`;
-            }
-        }
+    let mediaHtml = "";
+    const taskText = task.text || task.title || "";
 
-        return `
-            <li class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-1 animate-fadeIn">
-                <div class="flex justify-between items-start gap-4">
-                    <span class="text-sm font-medium text-gray-800 break-words flex-1">
-                        ${task.text || task.title || "No description"}
-                    </span>
-                    <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500 transition text-lg">✕</button>
-                </div>
-                ${mediaHtml}
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-[9px] text-gray-400 uppercase tracking-tighter">
-                        ${new Date(task.created_at || Date.now()).toLocaleString([], {hour: '2-digit', minute:'2-digit', month:'short', day:'numeric'})}
-                    </span>
-                    <span class="text-[9px] font-bold text-gray-300">#${task.id}</span>
-                </div>
-            </li>`;
+    // Check if the text is actually a link to a GIF
+    const isGifLink = taskText.match(/\.(gif|jpg|jpeg|png)$/i);
+
+    if (task.media_url) {
+        // Handle uploaded files
+        mediaHtml = `<div class="mt-2">
+            <img src="${task.media_url}" class="rounded-lg max-w-full h-auto border shadow-sm">
+        </div>`;
+    } else if (isGifLink) {
+        // Handle pasted GIF links
+        mediaHtml = `<div class="mt-2">
+            <img src="${taskText}" class="rounded-lg max-w-full h-auto border shadow-sm">
+        </div>`;
     }
+
+    return `
+        <li class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-1">
+            <div class="flex justify-between items-start gap-4">
+                <span class="text-sm font-medium text-gray-800 break-words flex-1">
+                    ${isGifLink ? "🎬 Animated GIF" : taskText}
+                </span>
+                <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500 transition">✕</button>
+            </div>
+            ${mediaHtml}
+        </li>`;
+}
 
     // 2. THE DELIVERY DRIVER: Fetching tasks from API
     async function fetchTasks() {
