@@ -22,10 +22,17 @@ origins = [
 ]
 
 # --- DATABASE CONNECTION ---
-# On Render, set an Environment Variable MONGODB_URI with your string
-MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://userAdmin:Pokiman5459deja@clustermin.uhswwrh.mongodb.net/?appName=ClusterMin")
+# We get the URI from the environment variable 'MONGODB_URI'
+# If it's not set, it defaults to None (much safer than hardcoding it!)
+MONGO_URI = os.getenv("MONGODB_URI")
+
+if not MONGO_URI:
+    logging.error("CRITICAL: MONGODB_URI is not set in Environment Variables!")
+    # For local testing only, you can put a dummy string here
+    MONGO_URI = "mongodb://localhost:27017" 
+
 client = AsyncIOMotorClient(MONGO_URI)
-db_mongo = client.taskflow_db
+db_mongo = client.taskflow_db # This ensures it uses your specific DB
 collection = db_mongo.tasks
 
 # In main.py
