@@ -2,8 +2,8 @@ import os
 import logging
 import cloudinary
 import cloudinary.uploader
-from datetime import datetime
 from typing import Optional, List
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Header, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -110,20 +110,26 @@ async def get_next_id():
     return 1
 
 @app.get("/tasks", response_model=List[Task])
-async def get_tasks(Search: Optional[str] = None, limit: int = 50):
-    query = {}
-    if Search:
-        # Searches both new 'text' and old 'title' fields
-        query = {
-            "$or": [
-                {"text": {"$regex": Search, "$options": "i"}},
-                {"title": {"$regex": Search, "$options": "i"}}
-            ]
-        }
+async def get_tasks(Search: Optional[str] = None):
+    try:
+        query = {}
+        if Search:
+            # This search is safe for both old 'title' and new 'text' fields
+            query = {
+                "$or": [
+                    {"text": {"$regex": Search, "$options": "i"}},
+                    {"title": {"$regex": Search, "$options": "i"}}
+                ]
+            }
+        
+        cursor = collection.find(query).sort("created_at", -1)
+        tasks = await cursor.to_list(length=100)
+        return tasks
+    except Exception as e:
+        logging.error(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     
-    cursor = collection.find(query).sort("created_at", -1).limit(limit)
-    return await cursor.to_list(length=limit)
-
+    
 @app.post("/tasks")
 async def create_task(
     text: str = Form(""), 
