@@ -34,16 +34,33 @@
 
         <div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">Connecting...</div>
 
-        <div class="space-y-2 mb-4">
-            <div class="flex flex-col gap-2">
-                <input id="taskInput" type="text" placeholder="Task title..." class="border p-2 rounded-lg focus:outline-none text-sm w-full">
-                <div class="flex">
-                    <input id="descInput" type="text" placeholder="Add description (optional)..." class="flex-1 border p-2 rounded-l-lg focus:outline-none text-xs bg-gray-50">
-                    <button onclick="addTask()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 transition">Add</button>
-                </div>
-            </div>
-            <input id="searchInput" type="text" oninput="fetchTasks()" placeholder="🔍 Search tasks..." class="w-full border p-2 rounded-lg focus:outline-none text-sm bg-gray-50">
+        <div class="space-y-4 mb-4">
+    <div class="bg-white border rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-400 transition">
+        <div class="flex items-center gap-2">
+            <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/gif,.pdf,.doc,.docx">
+            
+            <button onclick="document.getElementById('mediaInput').click()" 
+                    class="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition" 
+                    title="Attach File or GIF">
+                📎
+            </button>
+            
+            <input id="taskInput" type="text" 
+                   placeholder="Type a task or attach a GIF..." 
+                   class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
+            
+            <button onclick="addTask()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-sm">
+                Send
+            </button>
         </div>
+        <div id="filePreview" class="text-[10px] text-blue-500 font-medium ml-10 mt-1 empty:hidden"></div>
+    </div>
+
+    <input id="searchInput" type="text" oninput="fetchTasks()" 
+           placeholder="🔍 Search tasks..." 
+           class="w-full border p-2 rounded-lg focus:outline-none text-sm bg-gray-50">
+</div>
 
         <ul id="taskList" class="space-y-2"></ul>
 
@@ -58,19 +75,53 @@
     </div>
 
 <script>
-    // =================================================================
-    // ⚠️ IMPORTANT: REPLACE THIS URL AFTER DEPLOYING TO RENDER ⚠️
-    // Example: "https://my-task-app.onrender.com"
-    // =================================================================
     const API_BASE_URL = "https://task-flow-now.onrender.com";
-    
-    // Note: If you changed your API_KEY in Render Env Vars, update it here too.
     const API_KEY = "RENDER_REPLACE_API_KEY"; 
-    // =================================================================
-
     const API_URL = `${API_BASE_URL}/tasks`;
+
     document.getElementById('docsLink').href = `${API_BASE_URL}/docs`;
 
+    // File selection preview
+    document.getElementById('mediaInput').addEventListener('change', function() {
+        const file = this.files[0];
+        const preview = document.getElementById('filePreview');
+        preview.innerText = file ? `📄 Attached: ${file.name}` : "";
+    });
+
+    // 1. THE CHEF: Helper to render each task card
+    function renderTask(task) {
+        let mediaHtml = "";
+        if (task.media_url) {
+            if (task.media_type && task.media_type.startsWith('image/')) {
+                mediaHtml = `<div class="mt-2">
+                    <img src="${task.media_url}" class="rounded-lg max-w-full h-auto border shadow-sm cursor-pointer hover:opacity-90 transition" onclick="window.open('${task.media_url}', '_blank')">
+                </div>`;
+            } else {
+                mediaHtml = `<div class="mt-2">
+                    <a href="${task.media_url}" target="_blank" class="inline-flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-100 transition border border-blue-100 w-full justify-center">📄 View Document</a>
+                </div>`;
+            }
+        }
+
+        return `
+            <li class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-1 animate-fadeIn">
+                <div class="flex justify-between items-start gap-4">
+                    <span class="text-sm font-medium text-gray-800 break-words flex-1">
+                        ${task.text || task.title || "No description"}
+                    </span>
+                    <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500 transition text-lg">✕</button>
+                </div>
+                ${mediaHtml}
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-[9px] text-gray-400 uppercase tracking-tighter">
+                        ${new Date(task.created_at || Date.now()).toLocaleString([], {hour: '2-digit', minute:'2-digit', month:'short', day:'numeric'})}
+                    </span>
+                    <span class="text-[9px] font-bold text-gray-300">#${task.id}</span>
+                </div>
+            </li>`;
+    }
+
+    // 2. THE DELIVERY DRIVER: Fetching tasks from API
     async function fetchTasks() {
         const statusEl = document.getElementById('status');
         const list = document.getElementById('taskList');
@@ -78,86 +129,30 @@
 
         try {
             const res = await fetch(`${API_URL}?Search=${searchTerm}`);
-            if(!res.ok) throw new Error("Failed to connect");
+            if(!res.ok) throw new Error("Connection Failed");
             
             const tasks = await res.json();
-            
             statusEl.innerText = "● API Online";
             statusEl.className = "text-[10px] font-semibold mb-4 text-green-500 uppercase tracking-widest";
 
-            list.innerHTML = '';
-            tasks.forEach(task => {
-                const completedClass = task.is_completed ? 'line-through text-gray-400' : 'text-gray-700 font-semibold';
-                const desc = task.description || ''; 
-                const date = task.created_at || '';
-                
-                // Note: Added safe escaping for quotes in title/desc to prevent JS errors
-                const safeTitle = task.title.replace(/'/g, "\\'");
-                const safeDesc = desc.replace(/'/g, "\\'");
-
-                list.innerHTML += `
-                    <li class="flex flex-col p-3 bg-gray-50 rounded border hover:shadow-sm transition gap-2">
-                        <div class="flex justify-between items-center">
-                            <span class="${completedClass} text-sm">${task.title}</span>
-                            <div class="flex gap-2">
-                                <button onclick="saveChanges(${task.id}, ${task.is_completed}, '${safeTitle}', document.getElementById('${task.id}_desc').value, '${date}')" class="text-blue-400 hover:text-blue-600 text-xs">💾</button>
-                                <button onclick="toggleTask(${task.id}, ${task.is_completed}, '${safeTitle}', document.getElementById('${task.id}_desc').value, '${date}')" class="text-green-500 hover:text-green-700">✓</button>
-                                <button onclick="deleteTask(${task.id})" class="text-red-400 hover:text-red-600">✕</button>
-                            </div>
-                        </div>
-                        <input id="${task.id}_desc" type="text" value="${desc}" 
-                            class="text-[11px] w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-300 focus:outline-none text-gray-500" 
-                            placeholder="No description...">
-                    </li>`;
-            });
+            list.innerHTML = tasks.map(task => renderTask(task)).join('');
             updateStats();
             
         } catch (err) {
-            console.error(err);
-            statusEl.innerText = "○ API Offline (Check URL)";
+            statusEl.innerText = "○ API Offline";
             statusEl.className = "text-[10px] font-semibold mb-4 text-red-500 uppercase tracking-widest";
         }
     }
 
-    async function clearAllTasks() {
-    const password = prompt("Enter Admin Password to Wipe Database:");
-    
-    // We compare the input to the variable that Render injected for us
-    // Your GitHub will only show "RENDER_REPLACE_API_KEY" here
-    if (password !== API_KEY) { 
-        alert("❌ Access Denied: Incorrect Password!");
-        return;
-    }
-
-    if (!confirm("⚠️ FINAL WARNING: Are you sure?")) return;
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/system/clear_memory`, {
-            method: 'DELETE',
-            headers: { 
-                'X-API-KEY': API_KEY, // This uses the same injected key
-                'Content-Type': 'application/json' 
-            }
-        });
-
-        if (res.ok) {
-            alert("🧹 System Cleared!");
-            fetchTasks();
-        } else {
-            alert("❌ Server rejected the request.");
-        }
-    } catch (err) {
-        alert("❌ Server Error: Connection failed.");
-    }
-}
+    // 3. UPDATED STATS: Fixed URL to match main.py
     async function updateStats() {
         try {
-            const res = await fetch(`${API_URL}/stats`);
+            const res = await fetch(`${API_URL}/stats`); // This becomes /tasks/stats
             const stats = await res.json();
             
-            document.getElementById('totalTasks').innerText = stats.total;
-            document.getElementById('completionScore').innerText = stats.completion_score;
-            document.getElementById('pendingTasks').innerText = stats.pending;
+            document.getElementById('totalTasks').innerText = stats.total || 0;
+            document.getElementById('completionScore').innerText = stats.completion_score || "0%";
+            document.getElementById('pendingTasks').innerText = stats.pending || 0;
             
             if(stats.last_updated) {
                 document.getElementById('lastUpdated').innerText = stats.last_updated;
@@ -167,69 +162,51 @@
         }
     }
 
+    // 4. ADD TASK: FormData for Media Uploads
     async function addTask() {
-        const titleInput = document.getElementById('taskInput');
-        const descInput = document.getElementById('descInput');
+        const textInput = document.getElementById('taskInput');
+        const fileInput = document.getElementById('mediaInput');
         
-        if (!titleInput.value) return;
+        if (!textInput.value.trim() && !fileInput.files[0]) return;
 
-        await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                id: 0, 
-                title: titleInput.value, 
-                description: descInput.value, 
-                is_completed: false 
-            })
-        });
+        const formData = new FormData();
+        formData.append("text", textInput.value); 
+        if (fileInput.files[0]) formData.append("file", fileInput.files[0]);
 
-        titleInput.value = '';
-        descInput.value = '';
-        fetchTasks();
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'X-API-KEY': API_KEY },
+                body: formData
+            });
+
+            if (res.ok) {
+                textInput.value = "";
+                fileInput.value = "";
+                document.getElementById('filePreview').innerText = "";
+                fetchTasks();
+            }
+        } catch (err) {
+            console.error("Add failed", err);
+        }
     }
 
-    async function toggleTask(id, currentStatus, title, description, createdAt) {
-        // Toggle the status first
-        const newStatus = !currentStatus;
-        saveChanges(id, newStatus, title, description, createdAt);
-    }
-
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.innerText = message;
-        
-        // Show
-        toast.classList.remove('opacity-0', '-translate-y-20');
-        toast.classList.add('opacity-100', 'translate-y-0');
-        
-        // Hide after 3 seconds
-        setTimeout(() => {
-            toast.classList.remove('opacity-100', 'translate-y-0');
-            toast.classList.add('opacity-0', '-translate-y-20');
-        }, 3000); 
-    }
-    
-    async function saveChanges(id, is_completed, title, description, createdAt) {
-        await fetch(`${API_URL}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                id: id, 
-                title: title, 
-                is_completed: is_completed,
-                description: description,
-                created_at: createdAt
-            })
-        });
-        showToast("💾 Changes Saved!");
-        fetchTasks();
-    }
-
+    // 5. SYSTEM ACTIONS
     async function deleteTask(id) {
         if(!confirm("Delete this task?")) return;
-        
         await fetch(`${API_URL}/${id}`, { 
+            method: 'DELETE',
+            headers: { 'X-API-KEY': API_KEY }
+        });
+        fetchTasks();
+    }
+
+    async function clearAllTasks() {
+        const password = prompt("Admin Password:");
+        if (password !== API_KEY) return;
+        if (!confirm("Wipe everything?")) return;
+
+        await fetch(`${API_BASE_URL}/system/clear_memory`, {
             method: 'DELETE',
             headers: { 'X-API-KEY': API_KEY }
         });
