@@ -108,7 +108,7 @@ async def get_next_id():
         return last_task["id"] + 1
     return 1
 
-@app.get("/tasks/stats", response_model=List[Task])
+@app.get("/tasks", response_model=List[Task])
 async def get_tasks(Search: Optional[str] = None, limit: int = 50):
     query = {}
     if Search:
