@@ -57,12 +57,13 @@ app.add_middleware(
 
 class Task(BaseModel):
     id: int
-    text: Optional[str] = ""            # New field
-    title: Optional[str] = ""           # Keep for old tasks
-    description: Optional[str] = ""     # Keep for old tasks
-    media_url: Optional[str] = None     # New field
-    media_type: Optional[str] = None    # New field
-    created_at: Optional[datetime] = None # Change to datetime object
+    text: Optional[str] = ""
+    # Add these back as Optional so old data doesn't crash the server
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
+    created_at: Optional[datetime] = None
     is_completed: bool = False
 
 
