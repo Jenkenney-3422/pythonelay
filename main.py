@@ -177,13 +177,27 @@ async def update_task(task_id: int, updated_task: Task):
         raise HTTPException(status_code=404, detail="Task Not Found")
     return {"message": "Task updated!"}
 
+# FIX 2: The Delete Route (Ensure the ID is handled correctly)
 @app.delete("/tasks/{task_id}")
-async def delete_task(task_id: int, request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
-    verify_admin(x_api_key, request)
-    result = await collection.delete_one({"id": task_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Task Not Found")
-    return {"message": "Task Deleted"}
+async def delete_task(task_id: int, x_api_key: str = Header(None, alias="X-API-KEY")):
+    # 1. Check Key
+    if x_api_key != SECRET_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    
+    try:
+        # 2. Delete from MongoDB
+        # We use {"id": task_id} because your Pydantic model uses 'id'
+        result = await collection.delete_one({"id": task_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Task not found")
+            
+        return {"status": "success", "message": f"Task {task_id} deleted"}
+    
+    except Exception as e:
+        print(f"DELETE ERROR: {e}")
+        # This prevents the "500 Internal Server Error" without a message
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/system/clear_memory")
 async def clear_all_task(request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
