@@ -199,8 +199,20 @@ async def delete_task(task_id: int, x_api_key: str = Header(None, alias="X-API-K
         # This prevents the "500 Internal Server Error" without a message
         raise HTTPException(status_code=500, detail=str(e))
 
+# 1. Make sure the helper matches
+def verify_admin(x_api_key: str):
+    if x_api_key != SECRET_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+# 2. Update the route function
 @app.delete("/system/clear_memory")
-async def clear_all_task(request: Request, x_api_key: str = Header(None, alias="X-API-KEY")):
-    verify_admin(x_api_key, request)
-    await collection.delete_many({})
-    return {"message": "Cleared all data from MongoDB"}
+async def clear_all_task(x_api_key: str = Header(None, alias="X-API-KEY")):
+    # Fix: Only pass the key, not the request
+    verify_admin(x_api_key)
+    
+    try:
+        # This wipes the MongoDB collection
+        await collection.delete_many({}) 
+        return {"message": "All data cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
