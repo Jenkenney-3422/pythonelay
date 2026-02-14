@@ -49,7 +49,7 @@ origins = [
 # In main.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
+    allow_origins=["*"],  # In production, specify your frontend URL(s) here https://new-front-end-0311.onrender.com
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -129,7 +129,7 @@ async def get_tasks(Search: Optional[str] = None):
         logging.error(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
-    
+
 @app.post("/tasks")
 async def create_task(
     text: str = Form(""), 
