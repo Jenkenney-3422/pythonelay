@@ -201,16 +201,28 @@
     }
 
     async function clearAllTasks() {
-        const password = prompt("Admin Password:");
-        if (password !== API_KEY) return;
-        if (!confirm("Wipe everything?")) return;
+    const password = prompt("Enter Admin Password:");
+    if (!password) return;
 
-        await fetch(`${API_BASE_URL}/system/clear_memory`, {
+    try {
+        const res = await fetch(`${API_BASE_URL}/system/clear_memory`, {
             method: 'DELETE',
-            headers: { 'X-API-KEY': API_KEY }
+            headers: { 
+                'X-API-KEY': password, // Pass the password from the prompt
+                'Content-Type': 'application/json' 
+            }
         });
-        fetchTasks();
+
+        if (res.ok) {
+            alert("🧹 Database Wiped!");
+            fetchTasks(); // Refresh UI
+        } else {
+            alert("❌ Failed to clear. Check password.");
+        }
+    } catch (err) {
+        console.error("Clear error:", err);
     }
+}
 
     window.onload = () => {
         document.getElementById('taskInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
