@@ -49,9 +49,9 @@
                    placeholder="Type a task or attach a GIF..." 
                    class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
             
-            <button onclick="addTask()" 
-                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-sm">
-                Send
+            <button id="sendBtn" onclick="addTask()" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg">
+               <span id="btnText">Send</span>
+               <div id="loader" class="spinner" style="display: none;"></div>
             </button>
         </div>
         <div id="filePreview" class="text-[10px] text-blue-500 font-medium ml-10 mt-1 empty:hidden"></div>
@@ -88,6 +88,35 @@
         preview.innerText = file ? `📄 Attached: ${file.name}` : "";
     });
 
+    // snipper animation style
+    // 1. Create the element first
+const style = document.createElement('style');
+
+// 2. Put the CSS inside it
+style.innerHTML = `
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+        display: none; 
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .btn-loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+`;
+
+// 3. FINALLY, add it to the head
+document.head.appendChild(style);    
+
     // 1. THE CHEF: Helper to render each task card
     function renderTask(task) {
     let mediaHtml = "";
@@ -99,23 +128,29 @@
 
         // 1. Generate the specific player/preview
         if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
-            playerHtml = `
-                <video controls class="rounded-lg w-full max-h-64 bg-black">
-                    <source src="${url}" type="video/mp4">
-                </video>`;
-        } else if (['mp3', 'wav', 'm4a'].includes(ext)) {
-            playerHtml = `
-                <audio controls class="w-full">
-                    <source src="${url}" type="audio/mpeg">
-                </audio>`;
-        } else if (ext === 'pdf') {
-            playerHtml = `
-                <div class="p-4 bg-gray-50 border border-dashed rounded-lg text-center text-blue-600 font-medium">
-                    📄 PDF Document
-                </div>`;
-        } else {
-            playerHtml = `<img src="${url}" class="rounded-lg max-w-full h-auto border shadow-sm">`;
-        }
+    playerHtml = `
+        <video controls class="rounded-lg w-full max-h-64 bg-black">
+            <source src="${url}" type="video/mp4">
+        </video>`;
+} else if (['mp3', 'wav', 'm4a'].includes(ext)) {
+    playerHtml = `
+        <audio controls class="w-full">
+            <source src="${url}" type="audio/mpeg">
+        </audio>`;
+} else if (ext === 'pdf') {
+    playerHtml = `
+        <div class="p-4 bg-red-50 border border-dashed border-red-200 rounded-lg text-center text-red-600 font-medium">
+            📄 PDF Document
+        </div>`;
+} else if (['doc', 'docx'].includes(ext)) {
+    // New block for Word Documents
+    playerHtml = `
+        <div class="p-4 bg-blue-50 border border-dashed border-blue-200 rounded-lg text-center text-blue-700 font-medium">
+            📝 Word Document (.${ext})
+        </div>`;
+} else {
+    playerHtml = `<img src="${url}" class="rounded-lg max-w-full h-auto border shadow-sm">`;
+}
 
         // 2. Wrap everything in a container with a Download Button
         mediaHtml = `
@@ -181,32 +216,47 @@
 
     // 4. ADD TASK: FormData for Media Uploads
     async function addTask() {
-        const textInput = document.getElementById('taskInput');
-        const fileInput = document.getElementById('mediaInput');
-        
-        if (!textInput.value.trim() && !fileInput.files[0]) return;
+    const textInput = document.getElementById('taskInput');
+    const mediaInput = document.getElementById('mediaInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const btnText = document.getElementById('btnText');
+    const loader = document.getElementById('loader');
 
-        const formData = new FormData();
-        formData.append("text", textInput.value); 
-        if (fileInput.files[0]) formData.append("file", fileInput.files[0]);
+    if (!textInput.value && !mediaInput.files[0]) return;
 
-        try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'X-API-KEY': API_KEY },
-                body: formData
-            });
+    // --- START LOADING ---
+    sendBtn.classList.add('btn-loading');
+    btnText.style.display = 'none';
+    loader.style.display = 'block';
 
-            if (res.ok) {
-                textInput.value = "";
-                fileInput.value = "";
-                document.getElementById('filePreview').innerText = "";
-                fetchTasks();
-            }
-        } catch (err) {
-            console.error("Add failed", err);
-        }
+    const formData = new FormData();
+    formData.append('text', textInput.value);
+    if (mediaInput.files[0]) {
+        formData.append('file', mediaInput.files[0]);
     }
+
+    try {
+        const res = await fetch(`${API_URL}`, {
+            method: 'POST',
+            headers: { 'X-API-KEY': API_KEY },
+            body: formData
+        });
+
+        if (res.ok) {
+            textInput.value = '';
+            mediaInput.value = '';
+            await fetchTasks(); // Refresh list
+        }
+    } catch (err) {
+        console.error("Upload failed", err);
+        alert("Upload failed. Try a smaller file!");
+    } finally {
+        // --- STOP LOADING ---
+        sendBtn.classList.remove('btn-loading');
+        btnText.style.display = 'block';
+        loader.style.display = 'none';
+    }
+}
 
     // 5. SYSTEM ACTIONS
     async function deleteTask(id) {
