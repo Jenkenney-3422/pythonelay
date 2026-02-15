@@ -37,7 +37,7 @@
         <div class="space-y-4 mb-4">
     <div class="bg-white border rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-400 transition">
         <div class="flex items-center gap-2">
-            <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx">
+            <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
             
             <button onclick="document.getElementById('mediaInput').click()" 
                     class="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition" 
@@ -132,7 +132,7 @@ document.head.appendChild(style);
         <video controls class="rounded-lg w-full max-h-64 bg-black">
             <source src="${url}" type="video/mp4">
         </video>`;
-} else if (['mp3', 'wav', 'm4a'].includes(ext)) {
+}else if (['mp3', 'wav', 'm4a'].includes(ext)) {
     playerHtml = `
         <audio controls class="w-full">
             <source src="${url}" type="audio/mpeg">
@@ -148,6 +148,12 @@ document.head.appendChild(style);
         <div class="p-4 bg-blue-50 border border-dashed border-blue-200 rounded-lg text-center text-blue-700 font-medium">
             📝 Word Document (.${ext})
         </div>`;
+}else if (['xls', 'xlsx'].includes(ext)) {
+            // Added Spreadsheet Support
+            playerHtml = `<div class="p-4 bg-green-50 border border-dashed border-green-200 rounded-lg text-center text-green-700 font-medium">📊 Excel Spreadsheet</div>`;
+        } else if (['ppt', 'pptx'].includes(ext)) {
+            // Added Presentation Support
+            playerHtml = `<div class="p-4 bg-orange-50 border border-dashed border-orange-200 rounded-lg text-center text-orange-700 font-medium">📽️ PPT Presentation</div>`;
 } else {
     playerHtml = `<img src="${url}" class="rounded-lg max-w-full h-auto border shadow-sm">`;
 }
@@ -246,6 +252,11 @@ document.head.appendChild(style);
             textInput.value = '';
             mediaInput.value = '';
             await fetchTasks(); // Refresh list
+        }
+        else {
+            const errorData = await res.json();
+            // This alert tells you exactly what the Python backend didn't like
+            alert(`Upload Failed: ${errorData.detail || "Server error"}`);
         }
     } catch (err) {
         console.error("Upload failed", err);
