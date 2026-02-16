@@ -141,16 +141,26 @@
     }
 
     function showDashboard() {
-        document.getElementById('authSection').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('displayUser').innerText = localStorage.getItem('username');
-        document.getElementById('userGreeting').innerText = `Hello, ${localStorage.getItem('username')}`;
-        
-        if(localStorage.getItem('isAdmin') === 'true') {
-            document.getElementById('adminClearBtn').classList.remove('hidden');
-        }
-        fetchTasks();
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    
+    const username = localStorage.getItem('username');
+    const isAdmin = localStorage.getItem('isAdmin') === 'true'; // Convert string to boolean
+
+    document.getElementById('displayUser').innerText = username;
+    document.getElementById('userGreeting').innerText = `Hello, ${username}`;
+    
+    // FORCE SHOW ADMIN BUTTON IF ADMIN
+    const adminBtn = document.getElementById('adminClearBtn');
+    if (isAdmin) {
+        adminBtn.classList.remove('hidden');
+        adminBtn.style.display = 'block'; // Ensure it's visible
+    } else {
+        adminBtn.classList.add('hidden');
     }
+
+    fetchTasks();
+}
 
     function logout() {
         localStorage.clear();
