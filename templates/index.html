@@ -5,308 +5,275 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskFlow Pro Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            display: none; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-loading { pointer-events: none; opacity: 0.7; }
+    </style>
 </head>
 
-<body class="bg-gray-100 p-8">
-   <div id="toast" class="z-50 fixed top-10 right-5 bg-green-600 text-white px-8 py-4 rounded-xl shadow-2xl transform -translate-y-20 opacity-0 transition-all duration-500 ease-out pointer-events-none font-bold">
-        ✅ Changes Saved!
-    </div>
+<body class="bg-gray-100 p-4 md:p-8">
     
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-2 text-blue-600">TaskFlow Pro</h1>
+    <div id="authSection" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+            <h2 id="authTitle" class="text-3xl font-bold mb-2 text-blue-600">Login</h2>
+            <p id="authSub" class="text-gray-400 text-sm mb-6">Welcome back to TaskFlow</p>
+            
+            <div class="space-y-4">
+                <input type="text" id="authUser" placeholder="Username" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none">
+                <input type="password" id="authPass" placeholder="Password" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none">
+                <button onclick="handleAuth()" id="authBtn" class="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition">Login</button>
+                
+                <p class="text-center text-sm text-gray-500">
+                    <span id="toggleText">Need an account?</span> 
+                    <a href="#" onclick="toggleAuthMode()" id="authToggle" class="text-blue-600 font-bold underline ml-1">Signup</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-lg relative" style="display: none;">
         
-        <a href="#" id="docsLink" target="_blank" class="text-xs text-blue-400 hover:text-blue-600 underline mb-4 block">Open API Documentation ↗</a>
-         
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-blue-600">TaskFlow Pro</h1>
+                <p id="userGreeting" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest"></p>
+            </div>
+            <button onclick="logout()" class="text-[10px] bg-gray-100 px-2 py-1 rounded font-bold text-gray-500 hover:bg-red-50 hover:text-red-500 transition">LOGOUT</button>
+        </div>
+
         <div id="statsBar" class="grid grid-cols-3 gap-2 mb-6 text-center">
-            <div class="bg-blue-50 p-2 rounded border border-blue-100">
+            <div class="bg-blue-50 p-2 rounded-xl border border-blue-100">
                 <p class="text-[10px] text-blue-500 uppercase font-bold">Total</p>
                 <p id="totalTasks" class="text-lg font-bold text-blue-700">0</p>
             </div>
-            <div class="bg-green-50 p-2 rounded border border-green-100">
+            <div class="bg-green-50 p-2 rounded-xl border border-green-100">
                 <p class="text-[10px] text-green-500 uppercase font-bold">Score</p>
                 <p id="completionScore" class="text-lg font-bold text-green-700">0%</p>
             </div>
-            <div class="bg-yellow-50 p-2 rounded border border-yellow-100">
+            <div class="bg-yellow-50 p-2 rounded-xl border border-yellow-100">
                 <p class="text-[10px] text-yellow-600 uppercase font-bold">Pending</p>
                 <p id="pendingTasks" class="text-lg font-bold text-yellow-700">0</p>
             </div>
         </div>
 
-        <div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">Connecting...</div>
+        <div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">● API Online</div>
 
         <div class="space-y-4 mb-4">
-    <div class="bg-white border rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-400 transition">
-        <div class="flex items-center gap-2">
-            <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
-            
-            <button onclick="document.getElementById('mediaInput').click()" 
-                    class="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition" 
-                    title="Attach File or GIF">
-                📎
-            </button>
-            
-            <input id="taskInput" type="text" 
-                   placeholder="Type a task or attach a GIF..." 
-                   class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
-            
-            <button id="sendBtn" onclick="addTask()" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg">
-               <span id="btnText">Send</span>
-               <div id="loader" class="spinner" style="display: none;"></div>
-            </button>
+            <div class="bg-white border rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-400 transition">
+                <div class="flex items-center gap-2">
+                    <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+                    <button onclick="document.getElementById('mediaInput').click()" class="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition">📎</button>
+                    <input id="taskInput" type="text" placeholder="Share something..." class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
+                    <button id="sendBtn" onclick="addTask()" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
+                        <span id="btnText">Send</span>
+                        <div id="loader" class="spinner"></div>
+                    </button>
+                </div>
+                <div id="filePreview" class="text-[10px] text-blue-500 font-medium ml-10 mt-1 empty:hidden"></div>
+            </div>
+            <input id="searchInput" type="text" oninput="fetchTasks()" placeholder="🔍 Search tasks..." class="w-full border p-2 rounded-xl focus:outline-none text-sm bg-gray-50">
         </div>
-        <div id="filePreview" class="text-[10px] text-blue-500 font-medium ml-10 mt-1 empty:hidden"></div>
-    </div>
 
-    <input id="searchInput" type="text" oninput="fetchTasks()" 
-           placeholder="🔍 Search tasks..." 
-           class="w-full border p-2 rounded-lg focus:outline-none text-sm bg-gray-50">
-</div>
-
-        <ul id="taskList" class="space-y-2"></ul>
+        <ul id="taskList" class="space-y-3"></ul>
 
         <div class="mt-8 pt-4 border-t border-red-100">
-            <button onclick="clearAllTasks()" class="w-full py-2 text-xs font-bold text-red-400 hover:text-red-600 border border-red-100 hover:border-red-200 rounded-lg transition uppercase tracking-widest">
-                🗑️ Clear All Data
+            <button id="adminClearBtn" onclick="clearAllTasks()" class="w-full py-2 text-[10px] font-bold text-red-300 hover:text-red-500 border border-red-50 rounded-xl transition uppercase tracking-widest hidden">
+                🗑️ Wipe Global Database
             </button>
             <p class="text-[10px] text-center text-gray-400 mt-4 italic">
-               Last Sync: <span id="lastUpdated">Loading...</span>
+                Syncing as <span id="displayUser" class="font-bold text-blue-400">...</span>
             </p>
         </div>
     </div>
 
 <script>
     const API_BASE_URL = "https://task-flow-now.onrender.com";
-    const API_KEY = "RENDER_REPLACE_API_KEY"; 
-    const API_URL = `${API_BASE_URL}/tasks`;
+    let isLoginMode = true;
 
-    document.getElementById('docsLink').href = `${API_BASE_URL}/docs`;
-
-    // File selection preview
-    document.getElementById('mediaInput').addEventListener('change', function() {
-        const file = this.files[0];
-        const preview = document.getElementById('filePreview');
-        preview.innerText = file ? `📄 Attached: ${file.name}` : "";
-    });
-
-    // snipper animation style
-    // 1. Create the element first
-const style = document.createElement('style');
-
-// 2. Put the CSS inside it
-style.innerHTML = `
-    .spinner {
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-        display: none; 
+    // --- 1. AUTHENTICATION LOGIC ---
+    function toggleAuthMode() {
+        isLoginMode = !isLoginMode;
+        document.getElementById('authTitle').innerText = isLoginMode ? 'Login' : 'Sign Up';
+        document.getElementById('authSub').innerText = isLoginMode ? 'Welcome back to TaskFlow' : 'Create your secure account';
+        document.getElementById('authBtn').innerText = isLoginMode ? 'Login' : 'Create Account';
+        document.getElementById('authToggle').innerText = isLoginMode ? "Signup" : "Login";
+        document.getElementById('toggleText').innerText = isLoginMode ? "Need an account?" : "Already have an account?";
     }
 
-    @keyframes spin {
-        to { transform: rotate(360deg); }
+    async function handleAuth() {
+        const username = document.getElementById('authUser').value;
+        const password = document.getElementById('authPass').value;
+        const endpoint = isLoginMode ? '/login' : '/signup';
+
+        if(!username || !password) return alert("Please fill all fields");
+
+        try {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                if (isLoginMode) {
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('username', username);
+                    localStorage.setItem('isAdmin', data.is_admin);
+                    showDashboard();
+                } else {
+                    alert("Account created! Now please login.");
+                    toggleAuthMode();
+                }
+            } else {
+                alert(data.detail || "Authentication Failed");
+            }
+        } catch (err) { alert("Server Offline"); }
     }
 
-    .btn-loading {
-        pointer-events: none;
-        opacity: 0.7;
-    }
-`;
-
-// 3. FINALLY, add it to the head
-document.head.appendChild(style);    
-
-    // 1. THE CHEF: Helper to render each task card
-    function renderTask(task) {
-    let mediaHtml = "";
-    const url = task.media_url;
-
-    if (url) {
-        const ext = url.split('.').pop().toLowerCase();
-        let playerHtml = "";
-
-        // 1. Generate the specific player/preview
-        if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
-    playerHtml = `
-        <video controls class="rounded-lg w-full max-h-64 bg-black">
-            <source src="${url}" type="video/mp4">
-        </video>`;
-}else if (['mp3', 'wav', 'm4a'].includes(ext)) {
-    playerHtml = `
-        <audio controls class="w-full">
-            <source src="${url}" type="audio/mpeg">
-        </audio>`;
-} else if (ext === 'pdf') {
-    playerHtml = `
-        <div class="p-4 bg-red-50 border border-dashed border-red-200 rounded-lg text-center text-red-600 font-medium">
-            📄 PDF Document
-        </div>`;
-} else if (['doc', 'docx'].includes(ext)) {
-    // New block for Word Documents
-    playerHtml = `
-        <div class="p-4 bg-blue-50 border border-dashed border-blue-200 rounded-lg text-center text-blue-700 font-medium">
-            📝 Word Document (.${ext})
-        </div>`;
-}else if (['xls', 'xlsx'].includes(ext)) {
-            // Added Spreadsheet Support
-            playerHtml = `<div class="p-4 bg-green-50 border border-dashed border-green-200 rounded-lg text-center text-green-700 font-medium">📊 Excel Spreadsheet</div>`;
-        } else if (['ppt', 'pptx'].includes(ext)) {
-            // Added Presentation Support
-            playerHtml = `<div class="p-4 bg-orange-50 border border-dashed border-orange-200 rounded-lg text-center text-orange-700 font-medium">📽️ PPT Presentation</div>`;
-} else {
-    playerHtml = `<img src="${url}" class="rounded-lg max-w-full h-auto border shadow-sm">`;
-}
-
-        // 2. Wrap everything in a container with a Download Button
-        mediaHtml = `
-            <div class="mt-3 flex flex-col gap-2">
-                ${playerHtml}
-                <a href="${url.replace('/upload/', '/upload/fl_attachment/')}" 
-                   class="text-xs font-bold text-gray-500 hover:text-blue-600 flex items-center gap-1 transition-colors self-start px-2 py-1 bg-gray-100 rounded">
-                   📥 DOWNLOAD FILE
-                </a>
-            </div>`;
+    function showDashboard() {
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('displayUser').innerText = localStorage.getItem('username');
+        document.getElementById('userGreeting').innerText = `Hello, ${localStorage.getItem('username')}`;
+        
+        if(localStorage.getItem('isAdmin') === 'true') {
+            document.getElementById('adminClearBtn').classList.remove('hidden');
+        }
+        fetchTasks();
     }
 
-    return `
-        <li class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3 flex flex-col">
-            <div class="flex justify-between items-start gap-3">
-                <span class="text-sm font-medium text-gray-800 break-words">${task.text || "Untitled Task"}</span>
-                <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500 transition">✕</button>
-            </div>
-            ${mediaHtml}
-        </li>`;
-}
+    function logout() {
+        localStorage.clear();
+        location.reload();
+    }
 
-    // 2. THE DELIVERY DRIVER: Fetching tasks from API
+    // --- 2. TASK LOGIC ---
     async function fetchTasks() {
-        const statusEl = document.getElementById('status');
         const list = document.getElementById('taskList');
         const searchTerm = document.getElementById('searchInput').value;
+        const token = localStorage.getItem('token');
 
         try {
-            const res = await fetch(`${API_URL}?Search=${searchTerm}`);
-            if(!res.ok) throw new Error("Connection Failed");
-            
+            const res = await fetch(`${API_BASE_URL}/tasks?Search=${searchTerm}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const tasks = await res.json();
-            statusEl.innerText = "● API Online";
-            statusEl.className = "text-[10px] font-semibold mb-4 text-green-500 uppercase tracking-widest";
-
             list.innerHTML = tasks.map(task => renderTask(task)).join('');
             updateStats();
-            
-        } catch (err) {
-            statusEl.innerText = "○ API Offline";
-            statusEl.className = "text-[10px] font-semibold mb-4 text-red-500 uppercase tracking-widest";
-        }
+        } catch (err) { console.error("Fetch failed"); }
     }
 
-    // 3. UPDATED STATS: Fixed URL to match main.py
-    async function updateStats() {
-        try {
-            const res = await fetch(`${API_URL}/stats`); // This becomes /tasks/stats
-            const stats = await res.json();
-            
-            document.getElementById('totalTasks').innerText = stats.total || 0;
-            document.getElementById('completionScore').innerText = stats.completion_score || "0%";
-            document.getElementById('pendingTasks').innerText = stats.pending || 0;
-            
-            if(stats.last_updated) {
-                document.getElementById('lastUpdated').innerText = stats.last_updated;
-            }
-        } catch (e) {
-            console.error("Stats update failed", e);
+    function renderTask(task) {
+        let mediaHtml = "";
+        const currentUser = localStorage.getItem('username');
+        const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+        if (task.media_url) {
+            const url = task.media_url;
+            const ext = url.split('.').pop().toLowerCase();
+            let player = "";
+
+            if (['mp4', 'webm', 'mov'].includes(ext)) player = `<video controls class="rounded-lg w-full bg-black"><source src="${url}"></video>`;
+            else if (['mp3', 'wav', 'm4a'].includes(ext)) player = `<audio controls class="w-full"><source src="${url}"></audio>`;
+            else if (ext === 'pdf') player = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-center font-bold">📄 PDF</div>`;
+            else if (['doc', 'docx'].includes(ext)) player = `<div class="p-4 bg-blue-50 text-blue-600 rounded-lg text-center font-bold">📝 WORD</div>`;
+            else if (['xls', 'xlsx'].includes(ext)) player = `<div class="p-4 bg-green-50 text-green-600 rounded-lg text-center font-bold">📊 EXCEL</div>`;
+            else player = `<img src="${url}" class="rounded-lg w-full border">`;
+
+            mediaHtml = `<div class="mt-2">${player}<a href="${url}" target="_blank" class="text-[9px] mt-1 inline-block font-bold text-gray-400 hover:text-blue-500">DOWNLOAD 📥</a></div>`;
         }
+
+        // ONLY SHOW DELETE IF OWNER OR ADMIN
+        const deleteBtn = (task.owner === currentUser || isAdmin) 
+            ? `<button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500">✕</button>` 
+            : "";
+
+        return `
+            <li class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex flex-col">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[9px] font-bold text-blue-400 uppercase mb-1">${task.owner}</p>
+                        <span class="text-sm text-gray-800">${task.text || ""}</span>
+                    </div>
+                    ${deleteBtn}
+                </div>
+                ${mediaHtml}
+            </li>`;
     }
 
-    // 4. ADD TASK: FormData for Media Uploads
     async function addTask() {
-    const textInput = document.getElementById('taskInput');
-    const mediaInput = document.getElementById('mediaInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const btnText = document.getElementById('btnText');
-    const loader = document.getElementById('loader');
+        const text = document.getElementById('taskInput').value;
+        const file = document.getElementById('mediaInput').files[0];
+        const token = localStorage.getItem('token');
+        if(!text && !file) return;
 
-    if (!textInput.value && !mediaInput.files[0]) return;
+        const loader = document.getElementById('loader');
+        const btnText = document.getElementById('btnText');
+        loader.style.display = 'block';
+        btnText.style.display = 'none';
 
-    // --- START LOADING ---
-    sendBtn.classList.add('btn-loading');
-    btnText.style.display = 'none';
-    loader.style.display = 'block';
+        const formData = new FormData();
+        formData.append('text', text);
+        if(file) formData.append('file', file);
 
-    const formData = new FormData();
-    formData.append('text', textInput.value);
-    if (mediaInput.files[0]) {
-        formData.append('file', mediaInput.files[0]);
-    }
-
-    try {
-        const res = await fetch(`${API_URL}`, {
-            method: 'POST',
-            headers: { 'X-API-KEY': API_KEY },
-            body: formData
-        });
-
-        if (res.ok) {
-            textInput.value = '';
-            mediaInput.value = '';
-            await fetchTasks(); // Refresh list
-        }
-        else {
-            const errorData = await res.json();
-            // This alert tells you exactly what the Python backend didn't like
-            alert(`Upload Failed: ${errorData.detail || "Server error"}`);
-        }
-    } catch (err) {
-        console.error("Upload failed", err);
-        alert("Upload failed. Try a smaller file!");
-    } finally {
-        // --- STOP LOADING ---
-        sendBtn.classList.remove('btn-loading');
-        btnText.style.display = 'block';
-        loader.style.display = 'none';
-    }
-}
-
-    // 5. SYSTEM ACTIONS
-    async function deleteTask(id) {
-        if(!confirm("Delete this task?")) return;
-        await fetch(`${API_URL}/${id}`, { 
-            method: 'DELETE',
-            headers: { 'X-API-KEY': API_KEY }
-        });
-        fetchTasks();
-    }
-
-    async function clearAllTasks() {
-    const password = prompt("Enter Admin Password:");
-    if (!password) return;
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/system/clear_memory`, {
-            method: 'DELETE',
-            headers: { 
-                'X-API-KEY': password, // Pass the password from the prompt
-                'Content-Type': 'application/json' 
+        try {
+            const res = await fetch(`${API_BASE_URL}/tasks`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if(res.ok) {
+                document.getElementById('taskInput').value = '';
+                document.getElementById('mediaInput').value = '';
+                document.getElementById('filePreview').innerText = '';
+                fetchTasks();
             }
-        });
-
-        if (res.ok) {
-            alert("🧹 Database Wiped!");
-            fetchTasks(); // Refresh UI
-        } else {
-            alert("❌ Failed to clear. Check password.");
+        } catch (err) { alert("Upload failed"); }
+        finally {
+            loader.style.display = 'none';
+            btnText.style.display = 'block';
         }
-    } catch (err) {
-        console.error("Clear error:", err);
     }
-}
 
-    window.onload = () => {
-        document.getElementById('taskInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+    async function deleteTask(id) {
+        if(!confirm("Delete this?")) return;
+        const token = localStorage.getItem('token');
+        await fetch(`${API_BASE_URL}/tasks/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         fetchTasks();
-    };
+    }
+
+    async function updateStats() {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/tasks/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const stats = await res.json();
+        document.getElementById('totalTasks').innerText = stats.total;
+        document.getElementById('completionScore').innerText = stats.completion_score;
+        document.getElementById('pendingTasks').innerText = stats.pending;
+    }
+
+    // Initialize
+    window.onload = () => {
+        if(localStorage.getItem('token')) showDashboard();
+        
+        document.getElementById('mediaInput').addEventListener('change', function() {
+            document.getElementById('filePreview').innerText = this.files[0] ? `📎 ${this.files[0].name}` : "";
+        });
+    }
 </script>
 </body>
 </html>
