@@ -198,12 +198,14 @@ async def create_task(
     await tasks_collection.insert_one(task_doc)
     return {"status": "success", "id": new_id}
 
-@app.delete("/system/clear_memory")
-async def clear_all(current_user: dict = Depends(get_current_user)):
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admins only")
-    await tasks_collection.delete_many({})
-    return {"message": "Wiped"}
+@app.delete("/tasks/clear")
+async def clear_all_tasks(user=Depends(get_current_user)):
+    # Security Check: Only let Admin do this!
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await tasks_collection.delete_many({}) # Deletes everything
+    return {"message": "All tasks cleared"}
 
 @app.delete("/tasks/{task_id}")
 async def delete_task(task_id: int, current_user: dict = Depends(get_current_user)):
