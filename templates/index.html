@@ -173,20 +173,28 @@
 
     // --- 2. TASK LOGIC ---
     async function fetchTasks() {
-        const tasks = await responce.json();
-        tasks.forEach(task => {task.media_extension = task.media_extension || ''; task.media_type = task.media_type || ''; task.original_filename = task.original_filename || '';});
-        const list = document.getElementById('taskList');
         const searchTerm = document.getElementById('searchInput').value;
         const token = localStorage.getItem('token');
+        const list = document.getElementById('taskList');
+        /*const tasks = await response.json();
+        
+        tasks.forEach(task => {task.media_extension = task.media_extension || ''; task.media_type = task.media_type || ''; task.original_filename = task.original_filename || '';});*/
 
         try {
             const res = await fetch(`${API_BASE_URL}/tasks?Search=${searchTerm}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const tasks = await res.json();
+            tasks.forEach(task => {task.media_extension = task.media_extension || ''; task.media_type = task.media_type || ''; task.original_filename = task.original_filename || '';});
+            const list = document.getElementById('taskList');
+
             list.innerHTML = tasks.map(task => renderTask(task)).join('');
             updateStats();
-        } catch (err) { console.error("Fetch failed"); }
+            document.getElementById('status').innerText = "● API Online";
+        } catch (err) { console.error("Fetch failed");
+            list.innerHTML = '<li class="text-center py-8 text-gray-400">Connection Failed.Check network.</li>';
+            document.getElementById('status').innerText = "● API Offline";
+        }
     }
 
 function renderTask(task) {
@@ -199,7 +207,7 @@ function renderTask(task) {
 
         let detectedExt =task.media_extension || '';
         let fileType = task.media_type || '';
-        let originalFilename = task.original_filename || url.split('/').pop().split('?')[0] || 'taskflow-asset';
+        let  originalFilename = task.original_filename || url.split('/').pop().split('?')[0] || 'taskflow-asset';
 
         if (!detectedExt) {
             const urlObj = new URL(url, window.location.origin);
@@ -209,9 +217,9 @@ function renderTask(task) {
 
         
         // Accurate extension extraction using URL API
-        const urlObj = new URL(url, window.location.origin);
+        /*const urlObj = new URL(url, window.location.origin);
         const pathname = urlObj.pathname;
-        const ext = pathname.slice(pathname.lastIndexOf('.') + 1).split(/[?#]/)[0].toLowerCase() || '';
+        const ext = pathname.slice(pathname.lastIndexOf('.') + 1).split(/[?#]/)[0].toLowerCase() || '';*/
         
         let player = "";
 
@@ -398,13 +406,16 @@ function renderTask(task) {
 }
     
     // Initialize
-    window.onload = () => {
-        if(localStorage.getItem('token')) showDashboard();
-        
-        document.getElementById('mediaInput').addEventListener('change', function() {
-            document.getElementById('filePreview').innerText = this.files[0] ? `📎 ${this.files[0].name}` : "";
-        });
-    }
+    // Initialize
+window.onload = () => {
+    if(localStorage.getItem('token')) showDashboard();
+    
+    document.getElementById('mediaInput').addEventListener('change', function() {
+        const preview = document.getElementById('filePreview');
+        preview.innerText = this.files[0] ? `📎 ${this.files[0].name}` : "";
+        preview.style.display = this.files[0] ? 'block' : 'none';  // ← FIXED: Properly hides empty preview
+    });
+}
 </script>
 </body>
 </html>
