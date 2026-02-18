@@ -88,12 +88,12 @@ async def get_next_id():
     return (last_task["id"] + 1) if last_task else 1
 
 #-------origins----
-"""origins = [
+origins = [
     "http://127.0.0.1:5500",    # Local VS Code Live Server
     "http://localhost:5500",    # Local testing
     "https://taskflow-uibest.onrender.com", # Your Render Static Site URL
-]"""
-origins = ["*"]  # For testing; change to specific URLs in production!
+]
+"""origins = ["*"]"""  # For testing; change to specific URLs in production!
 
 # --- MIDDLEWARE ---
 app.add_middleware(
