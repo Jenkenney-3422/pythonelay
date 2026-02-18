@@ -258,17 +258,7 @@
             btnText.style.display = 'block';
         }
     }
-
-    async function deleteTask(id) {
-        if(!confirm("Delete this?")) return;
-        const token = localStorage.getItem('token');
-        await fetch(`${API_BASE_URL}/tasks/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        fetchTasks();
-    }
-
+    
     async function clearAllTasks() {
     const confirmation = confirm("⚠️ DANGER: This will delete EVERY task in the global database forever. Are you absolutely sure?");
     if (!confirmation) return;
@@ -291,7 +281,17 @@
         alert("Server error during wipe attempt.");
     }
 }
-
+    async function deleteTask(id) {
+        if(!confirm("Delete this?")) return;
+        const token = localStorage.getItem('token');
+        await fetch(`${API_BASE_URL}/tasks/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        fetchTasks();
+    }
+    
+    
     async function updateStats() {
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/tasks/stats`, {
@@ -302,7 +302,7 @@
         document.getElementById('completionScore').innerText = stats.completion_score;
         document.getElementById('pendingTasks').innerText = stats.pending;
     }
-
+    
     // Initialize
     window.onload = () => {
         if(localStorage.getItem('token')) showDashboard();
