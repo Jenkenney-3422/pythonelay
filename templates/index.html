@@ -85,20 +85,18 @@
 
         <ul id="taskList" class="space-y-3"></ul>
 
-        <div id="adminClearBtn" class="mt-8 pt-4 border-t border-red-100">
-            <button id="adminClearBtn" onclick="clearAllTasks()" 
-    style="display: none; width: 100%; padding: 12px; margin: 15px 0; 
-           background-color: #fee2e2; color: #b91c1c; border: 2px solid #fecaca; 
-           border-radius: 12px; font-weight: 900; cursor: pointer; 
-           text-transform: uppercase; letter-spacing: 1px; font-size: 11px;
-           text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-    ⚠️ WIPE GLOBAL DATABASE (ADMIN ONLY)
-</button>
-            <p class="text-[10px] text-center text-gray-400 mt-4 italic">
-                Syncing as <span id="displayUser" class="font-bold text-blue-400">...</span>
-            </p>
-        </div>
-    </div>
+        <div id="adminSection" class="mt-8 pt-4 border-t-2 border-red-100" style="display: none;">
+    <button id="realWipeBtn" onclick="clearAllTasks()" 
+        style="width: 100%; padding: 14px; background-color: #fee2e2; color: #b91c1c; 
+               border: 2px solid #fecaca; border-radius: 12px; font-weight: 900; 
+               cursor: pointer; text-transform: uppercase; letter-spacing: 1px; 
+               font-size: 11px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+        ⚠️ WIPE GLOBAL DATABASE (ADMIN ONLY)
+    </button>
+    <p class="text-[10px] text-center text-gray-400 mt-4 italic">
+        Syncing as <span id="displayUser" class="font-bold text-blue-400">...</span>
+    </p>
+</div>
 
 <script>
     console.log("DEBUG: Current User:", localStorage.getItem('username'));
@@ -152,14 +150,14 @@
     document.getElementById('dashboard').style.display = 'block';
     
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
-    const clearBtn = document.getElementById('adminClearBtn');
+    const adminSection = document.getElementById('adminSection');
 
     if (isAdmin) {
-        // Force display to block using standard JS
-        clearBtn.style.display = 'block';
-        console.log("Admin verified: Button styles forced.");
+        // Show the whole container, the button inside is already styled to show
+        adminSection.style.display = 'block';
+        console.log("Admin verified: Showing Wipe Controls.");
     } else {
-        clearBtn.style.display = 'none';
+        adminSection.style.display = 'none';
     }
 
     document.getElementById('displayUser').innerText = localStorage.getItem('username');
@@ -270,6 +268,29 @@
         });
         fetchTasks();
     }
+
+    async function clearAllTasks() {
+    const confirmation = confirm("⚠️ DANGER: This will delete EVERY task in the global database forever. Are you absolutely sure?");
+    if (!confirmation) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_BASE_URL}/tasks/clear`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            alert("Database Wiped Successfully.");
+            fetchTasks(); // Refresh the list
+        } else {
+            const data = await res.json();
+            alert("Error: " + (data.detail || "Could not wipe database. Check Admin status."));
+        }
+    } catch (err) {
+        alert("Server error during wipe attempt.");
+    }
+}
 
     async function updateStats() {
         const token = localStorage.getItem('token');
