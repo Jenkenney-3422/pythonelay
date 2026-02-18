@@ -171,6 +171,8 @@ async def get_tasks(Search: Optional[str] = None, current_user: dict = Depends(g
     tasks = await cursor.to_list(length=100)
     return tasks
 
+import os
+
 @app.post("/tasks")
 async def create_task(
     text: str = Form(""), 
@@ -179,21 +181,26 @@ async def create_task(
 ):
     media_url = None
     media_type = None
-    if file:
-    # Use the 'public_id' parameter to force Cloudinary to keep the extension
-    # We strip the extension from the filename to use as the ID base
-       import os
-       base_name = os.path.splitext(file.filename)[0]
     
-       res = cloudinary.uploader.upload(
-           file.file, 
-           resource_type="auto",
-           public_id=base_name, # Forces Cloudinary to use the real name
-           use_filename=True, 
-           unique_filename=True
-       )
-       media_url = res.get("secure_url")
-       media_type = file.content_type    
+    if file:
+        # 1. Get the original filename from the mobile device
+        original_filename = file.filename 
+        # 2. Extract the name without extension
+        base_name = os.path.splitext(original_filename)[0] 
+        
+        # 3. Upload with specific instructions to keep the extension
+        res = cloudinary.uploader.upload(
+            file.file, 
+            resource_type="auto",
+            public_id=base_name,      # Forces the name to stay the same
+            use_filename=True,        # Tells Cloudinary to use the real name
+            unique_filename=True      # Prevents files with same name from clashing
+        )
+        
+        media_url = res.get("secure_url")
+        media_type = file.content_type
+
+    # ... rest of your code ... 
 
     new_id = await get_next_id()
 
