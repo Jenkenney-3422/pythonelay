@@ -180,15 +180,20 @@ async def create_task(
     media_url = None
     media_type = None
     if file:
-    # We add use_filename and unique_filename to preserve the .xlsx/.docx extension
-        res = cloudinary.uploader.upload(
-            file.file, 
-            resource_type="auto",
-            use_filename=True, 
-            unique_filename=True
-    )
-    media_url = res.get("secure_url")
-    media_type = file.content_type    
+    # Use the 'public_id' parameter to force Cloudinary to keep the extension
+    # We strip the extension from the filename to use as the ID base
+       import os
+       base_name = os.path.splitext(file.filename)[0]
+    
+       res = cloudinary.uploader.upload(
+           file.file, 
+           resource_type="auto",
+           public_id=base_name, # Forces Cloudinary to use the real name
+           use_filename=True, 
+           unique_filename=True
+       )
+       media_url = res.get("secure_url")
+       media_type = file.content_type    
 
     new_id = await get_next_id()
 
