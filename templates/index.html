@@ -85,7 +85,7 @@
 
         <ul id="taskList" class="space-y-3"></ul>
 
-        <div class="mt-8 pt-4 border-t border-red-100">
+        <div id="adminClearBtn" class="mt-8 pt-4 border-t border-red-100">
             <button id="adminClearBtn" onclick="clearAllTasks()" class="w-full py-2 text-[10px] font-bold text-red-300 hover:text-red-500 border border-red-50 rounded-xl transition uppercase tracking-widest hidden">
                 🗑️ Wipe Global Database
             </button>
@@ -141,16 +141,26 @@
     }
 
     function showDashboard() {
-        document.getElementById('authSection').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('displayUser').innerText = localStorage.getItem('username');
-        document.getElementById('userGreeting').innerText = `Hello, ${localStorage.getItem('username')}`;
-        
-        if(localStorage.getItem('isAdmin') === 'true') {
-            document.getElementById('adminClearBtn').classList.remove('hidden');
-        }
-        fetchTasks();
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    
+    const username = localStorage.getItem('username');
+    const isAdmin = localStorage.getItem('isAdmin') === 'true'; // Convert string to boolean
+
+    document.getElementById('displayUser').innerText = username;
+    document.getElementById('userGreeting').innerText = `Hello, ${username}`;
+    
+    // FORCE SHOW ADMIN BUTTON IF ADMIN
+    const adminBtn = document.getElementById('adminClearBtn');
+    if (isAdmin) {
+        adminBtn.classList.remove('hidden');
+        adminBtn.style.display = 'block'; // Ensure it's visible
+    } else {
+        adminBtn.classList.add('hidden');
     }
+
+    fetchTasks();
+}
 
     function logout() {
         localStorage.clear();
