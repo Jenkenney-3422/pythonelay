@@ -1,9 +1,7 @@
 import os
 import logging
-import cloudinary
-import cloudinary.uploader
-from typing import Optional, List
 from datetime import datetime, timedelta, timezone
+from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Header, Request, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +11,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from bson import ObjectId
+import cloudinary
+import cloudinary.uploader
 
 # --- INITIALIZATION ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -21,7 +21,7 @@ app = FastAPI(title="TASKFLOW PRO - Secure Edition")
 # --- CONFIGURATION ---
 MONGO_URI = os.getenv("MONGODB_URI")
 SECRET_API_KEY = os.getenv("API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key-change-this") # Add this to Render Env
+JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key-change-this") 
 ALGORITHM = "HS256"
 
 cloudinary.config( 
@@ -52,7 +52,7 @@ class Task(BaseModel):
     media_url: Optional[str] = None
     media_type: Optional[str] = None
     owner: str # The username of the creator
-    created_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime 
     is_completed: bool = False
 
 class Token(BaseModel):
@@ -67,9 +67,9 @@ def get_password_hash(password):
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
+# --- AUTH HELPERS ---
 def create_access_token(data: dict):
     to_encode = data.copy()
-    # Use .now(timezone.utc) instead of utcnow()
     expire = datetime.now(timezone.utc) + timedelta(hours=24)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
@@ -77,24 +77,23 @@ def create_access_token(data: dict):
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None: raise HTTPException(status_code=401)
+        username = payload.get("sub")
         user = await users_collection.find_one({"username": username})
-        if user is None: raise HTTPException(status_code=401)
+        if not user: raise HTTPException(status_code=401)
         return user
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid Session")
+    except: raise HTTPException(status_code=401, details = "Invalid Session")
 
 async def get_next_id():
     last_task = await tasks_collection.find_one(sort=[("id", -1)])
     return (last_task["id"] + 1) if last_task else 1
 
 #-------origins----
-origins = [
+"""origins = [
     "http://127.0.0.1:5500",    # Local VS Code Live Server
     "http://localhost:5500",    # Local testing
     "https://taskflow-uibest.onrender.com", # Your Render Static Site URL
-]
+]"""
+origins = ["*"]  # For testing; change to specific URLs in production!
 
 # --- MIDDLEWARE ---
 app.add_middleware(
@@ -129,6 +128,7 @@ async def login(user: User):
     return {"access_token": token, "token_type": "bearer", "is_admin": db_user.get("is_admin", False)}
 
 #-------GLobal Routes----
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 @app.get("/")
 async def root():
     return {"message": "Backend is running and CORS is configured!", "time": datetime.now(timezone.utc)}
