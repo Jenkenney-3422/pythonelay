@@ -86,9 +86,11 @@
         <ul id="taskList" class="space-y-3"></ul>
 
         <div id="adminClearBtn" class="mt-8 pt-4 border-t border-red-100">
-            <button id="adminClearBtn" onclick="clearAllTasks()" class="w-full py-2 text-[10px] font-bold text-red-300 hover:text-red-500 border border-red-50 rounded-xl transition uppercase tracking-widest hidden">
-                🗑️ Wipe Global Database
-            </button>
+            <button id="adminClearBtn" onclick="clearAllTasks()" 
+        class="w-full py-3 my-2 text-xs font-black text-red-600 bg-red-50 border-2 border-red-200 rounded-xl transition-all uppercase tracking-widest hidden"
+        style="min-height: 44px;">
+    🗑️ Wipe Global Database
+</button>
             <p class="text-[10px] text-center text-gray-400 mt-4 italic">
                 Syncing as <span id="displayUser" class="font-bold text-blue-400">...</span>
             </p>
@@ -141,24 +143,31 @@
     }
 
     function showDashboard() {
+    // 1. Hide Login, Show Dashboard
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     
-    const username = localStorage.getItem('username');
-    const isAdmin = localStorage.getItem('isAdmin') === 'true'; // Convert string to boolean
+    // 2. Get Admin status from Storage
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    const clearBtn = document.getElementById('adminClearBtn');
 
-    document.getElementById('displayUser').innerText = username;
-    document.getElementById('userGreeting').innerText = `Hello, ${username}`;
-    
-    // FORCE SHOW ADMIN BUTTON IF ADMIN
-    const adminBtn = document.getElementById('adminClearBtn');
     if (isAdmin) {
-        adminBtn.classList.remove('hidden');
-        adminBtn.style.display = 'block'; // Ensure it's visible
+        // 3. Force visibility: Remove 'hidden' class AND set style to block
+        clearBtn.classList.remove('hidden');
+        clearBtn.style.setProperty('display', 'block', 'important');
+        
+        // 4. Change colors to make it pop (so you know it's there)
+        clearBtn.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        console.log("Admin verified: Button forced to visible.");
     } else {
-        adminBtn.classList.add('hidden');
+        clearBtn.style.display = 'none';
+        console.log("Standard user: Button hidden.");
     }
 
+    // 5. Update user greetings
+    document.getElementById('displayUser').innerText = localStorage.getItem('username');
+    document.getElementById('userGreeting').innerText = `Hello, ${localStorage.getItem('username')}`;
+    
     fetchTasks();
 }
 
