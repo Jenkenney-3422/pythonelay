@@ -87,11 +87,12 @@
 
         <div id="adminClearBtn" class="mt-8 pt-4 border-t border-red-100">
             <button id="adminClearBtn" onclick="clearAllTasks()" 
-    style="display: none; width: 100%; padding: 12px; margin: 10px 0; 
-           background-color: #fee2e2; color: #dc2626; border: 2px solid #fecaca; 
-           border-radius: 12px; font-weight: bold; cursor: pointer; 
-           text-transform: uppercase; letter-spacing: 1px; font-size: 12px;">
-    🗑️ Wipe Global Database
+    style="display: none; width: 100%; padding: 12px; margin: 15px 0; 
+           background-color: #fee2e2; color: #b91c1c; border: 2px solid #fecaca; 
+           border-radius: 12px; font-weight: 900; cursor: pointer; 
+           text-transform: uppercase; letter-spacing: 1px; font-size: 11px;
+           text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    ⚠️ WIPE GLOBAL DATABASE (ADMIN ONLY)
 </button>
             <p class="text-[10px] text-center text-gray-400 mt-4 italic">
                 Syncing as <span id="displayUser" class="font-bold text-blue-400">...</span>
@@ -147,28 +148,20 @@
     }
 
     function showDashboard() {
-    // 1. Hide Login, Show Dashboard
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     
-    // 2. Get Admin status from Storage
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
     const clearBtn = document.getElementById('adminClearBtn');
 
     if (isAdmin) {
-        // 3. Force visibility: Remove 'hidden' class AND set style to block
-        clearBtn.classList.remove('hidden');
-        clearBtn.style.setProperty('display', 'block', 'important');
-        
-        // 4. Change colors to make it pop (so you know it's there)
-        clearBtn.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
-        console.log("Admin verified: Button forced to visible.");
+        // Force display to block using standard JS
+        clearBtn.style.display = 'block';
+        console.log("Admin verified: Button styles forced.");
     } else {
         clearBtn.style.display = 'none';
-        console.log("Standard user: Button hidden.");
     }
 
-    // 5. Update user greetings
     document.getElementById('displayUser').innerText = localStorage.getItem('username');
     document.getElementById('userGreeting').innerText = `Hello, ${localStorage.getItem('username')}`;
     
