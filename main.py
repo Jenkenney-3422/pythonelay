@@ -129,7 +129,7 @@ async def login(user: User):
 
 #-------GLobal Routes----
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+"""app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])"""
 
 @app.get("/")
 async def root():
