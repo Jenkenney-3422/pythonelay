@@ -173,6 +173,8 @@
 
     // --- 2. TASK LOGIC ---
     async function fetchTasks() {
+        const tasks = await responce.json();
+        tasks.forEach(task => {task.media_extension = task.media_extension || ''; task.media_type = task.media_type || ''; task.original_filename = task.original_filename || '';});
         const list = document.getElementById('taskList');
         const searchTerm = document.getElementById('searchInput').value;
         const token = localStorage.getItem('token');
@@ -194,6 +196,17 @@ function renderTask(task) {
 
     if (task.media_url) {
         const url = task.media_url;
+
+        let detectedExt =task.media_extension || '';
+        let fileType = task.media_type || '';
+        let originalFilename = task.original_filename || url.split('/').pop().split('?')[0] || 'taskflow-asset';
+
+        if (!detectedExt) {
+            const urlObj = new URL(url, window.location.origin);
+            const pathname =urlObj.pathname;
+            detectedExt = pathname.slice(pathname.lastIndexOf('.') + 1).split(/[?#]/)[0].toLowerCase() || '';
+        }
+
         
         // Accurate extension extraction using URL API
         const urlObj = new URL(url, window.location.origin);
@@ -203,15 +216,15 @@ function renderTask(task) {
         let player = "";
 
         // 1. Videos
-        if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
+        if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(detectedExt)) {
             player = `<video controls class="rounded-lg w-full bg-black shadow-inner"><source src="${url}"></video>`;
         } 
         // 2. Audio
-        else if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext)) {
+        else if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(detectedExt)) {
             player = `<div class="p-2 bg-gray-50 rounded-xl border"><audio controls class="w-full h-8"><source src="${url}"></audio></div>`;
         } 
         // 3. Images - Explicitly checked to prevent broken icons
-        else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff'].includes(ext)) {
+        else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff'].includes(detectedExt)) {
             player = `<img src="${url}" class="rounded-xl w-full border shadow-sm hover:scale-[1.02] transition-transform cursor-zoom-in" onclick="window.open('${url}')" alt="Task media">`;
         }
         // 4. Documents - Professional Cards
@@ -221,25 +234,25 @@ function renderTask(task) {
             let label = "FILE";
             let textColor = "text-gray-700";
 
-            if (['pdf'].includes(ext)) { 
+            if (['pdf'].includes(detectedExt)) { 
                 icon = "📕"; colorClass = "bg-red-50 border-red-100"; label = "PDF"; textColor = "text-red-700";
             }
-            else if (['doc', 'docx'].includes(ext)) { 
+            else if (['doc', 'docx'].includes(detectedExt)) { 
                 icon = "📘"; colorClass = "bg-blue-50 border-blue-100"; label = "WORD"; textColor = "text-blue-700";
             }
-            else if (['xls', 'xlsx'].includes(ext)) { 
+            else if (['xls', 'xlsx'].includes(detectedExt)) { 
                 icon = "📗"; colorClass = "bg-green-50 border-green-100"; label = "EXCEL"; textColor = "text-green-700";
             }
-            else if (['ppt', 'pptx'].includes(ext)) { 
+            else if (['ppt', 'pptx'].includes(detectedExt)) { 
                 icon = "📙"; colorClass = "bg-orange-50 border-orange-100"; label = "POWERPOINT"; textColor = "text-orange-700";
             }
-            else if (['txt', 'rtf', 'md'].includes(ext)) { 
+            else if (['txt', 'rtf', 'md'].includes(detectedExt)) { 
                 icon = "📝"; colorClass = "bg-yellow-50 border-yellow-200"; label = "TEXT"; textColor = "text-yellow-800";
             }
-            else if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
+            else if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(detectedExt)) {
                 icon = "📦"; colorClass = "bg-purple-50 border-purple-100"; label = "ARCHIVE"; textColor = "text-purple-700";
             }
-            else if (['html', 'htm'].includes(ext)) { 
+            else if (['html', 'htm'].includes(detectedExt)) { 
                 icon = "🌐"; colorClass = "bg-indigo-50 border-indigo-100"; label = "HTML"; textColor = "text-indigo-700";
             }
 
@@ -248,7 +261,7 @@ function renderTask(task) {
                     <div class="text-4xl filter drop-shadow-sm">${icon}</div>
                     <div class="flex flex-col overflow-hidden text-left">
                         <span class="text-[9px] font-black uppercase tracking-widest opacity-50">${label}</span>
-                        <span class="text-xs font-bold ${textColor} truncate">${ext.toUpperCase()} RESOURCE</span>
+                        <span class="text-xs font-bold ${textColor} truncate">${detectedExt.toUpperCase()} RESOURCE</span>
                     </div>
                 </div>`;
         }
@@ -261,7 +274,7 @@ function renderTask(task) {
                 ${player}
                 <button onclick="downloadFile('${url}', '${filename}')"
                         class="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tighter">
-                    Download Asset 📥
+                    Download ${filename.split('.')[0].slice(0,10)}... 📥
                 </button>
             </div>`;
     }

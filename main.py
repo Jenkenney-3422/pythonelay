@@ -181,26 +181,31 @@ async def create_task(
 ):
     media_url = None
     media_type = None
+    original_filename = None
+    file_extension = None
     
     if file:
-        # 1. Get the original filename from the mobile device
-        original_filename = file.filename 
-        # 2. Extract the name without extension
-        base_name = os.path.splitext(original_filename)[0] 
+        original_filename = file.filename or "unknown"
+        # Extract full extension (handles .tar.gz etc.)
+        _, file_extension = os.path.splitext(original_filename)
+        base_name = os.path.splitext(original_filename)[0]  # Name without ext
         
-        # 3. Upload with specific instructions to keep the extension
-        res = cloudinary.uploader.upload(
-            file.file, 
+        # Upload with explicit filename + format to preserve identity
+        upload_result = cloudinary.uploader.upload(
+            file.file,
             resource_type="auto",
-            public_id=base_name,      # Forces the name to stay the same
-            use_filename=True,        # Tells Cloudinary to use the real name
-            unique_filename=True      # Prevents files with same name from clashing
+            public_id=f"{base_name}",  # Base name
+            filename=original_filename,  # Full original name
+            format=file_extension[1:].lower() if file_extension else None,  # e.g., 'docx'
+            use_filename=True,
+            unique_filename=False,  # Avoid renaming clashes
+            overwrite=True  # Replace if exists
         )
         
-        media_url = res.get("secure_url")
-        media_type = file.content_type
-
-    # ... rest of your code ... 
+        media_url = upload_result.get("secure_url")
+        media_type = file.content_type or upload_result.get("resource_type", "unknown")
+        # Log for debug
+        logging.info(f"Uploaded {original_filename} -> {media_url} (type: {media_type}, ext: {file_extension})")
 
     new_id = await get_next_id()
 
@@ -209,12 +214,14 @@ async def create_task(
         "text": text,
         "media_url": media_url,
         "media_type": media_type,
+        "media_extension": file_extension,  # NEW: Store for frontend
+        "original_filename": original_filename,  # NEW: For reliable downloads
         "owner": current_user["username"],
         "created_at": datetime.now(timezone.utc),
         "is_completed": False
     }
     await tasks_collection.insert_one(task_doc)
-    return {"status": "success", "id": new_id}
+    return {"status": "success", "id": new_id, "media_url": media_url, "media_extension": file_extension , "media_type": media_type , "original_filename": original_filename}
 
 @app.delete("/tasks/clear")
 async def clear_all_tasks(user=Depends(get_current_user)):
