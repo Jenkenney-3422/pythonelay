@@ -128,7 +128,9 @@ async def login(user: User):
     return {"access_token": token, "token_type": "bearer", "is_admin": db_user.get("is_admin", False)}
 
 #-------GLobal Routes----
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
 @app.get("/")
 async def root():
     return {"message": "Backend is running and CORS is configured!", "time": datetime.now(timezone.utc)}
@@ -196,6 +198,13 @@ async def create_task(
     await tasks_collection.insert_one(task_doc)
     return {"status": "success", "id": new_id}
 
+@app.delete("/system/clear_memory")
+async def clear_all(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admins only")
+    await tasks_collection.delete_many({})
+    return {"message": "Wiped"}
+
 @app.delete("/tasks/{task_id}")
 async def delete_task(task_id: int, current_user: dict = Depends(get_current_user)):
     task = await tasks_collection.find_one({"id": task_id})
@@ -207,10 +216,3 @@ async def delete_task(task_id: int, current_user: dict = Depends(get_current_use
         return {"message": "Deleted"}
     
     raise HTTPException(status_code=403, detail="Not authorized to delete this content")
-
-@app.delete("/system/clear_memory")
-async def clear_all(current_user: dict = Depends(get_current_user)):
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admins only")
-    await tasks_collection.delete_many({})
-    return {"message": "Wiped"}
