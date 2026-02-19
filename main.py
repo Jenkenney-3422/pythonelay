@@ -48,7 +48,7 @@ client = AsyncIOMotorClient(MONGO_URI ,
                              retryWrites=True,
                              retryReads=True,
                              tlsAllowInvalidCertificates= False, #security
-                             ssl_cert_reqs=ssl.CERT_NONE, # Atlas SSL fix put REQUIRE instead of NONE for production with valid certs
+                            # ssl_cert_reqs=ssl.CERT_REQUIRED, Atlas SSL fix put REQUIRE instead of NONE for production with valid certs
 )
 db_mongo = client.taskflow_db 
 tasks_collection = db_mongo.tasks
