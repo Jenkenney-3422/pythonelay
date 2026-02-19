@@ -213,45 +213,57 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
     
     if file:
         original_filename = file.filename or "unknown"
-        # Extract extension (e.g., '.xlsx')
         _, file_extension = os.path.splitext(original_filename)
-        # Use filename but let Cloudinary manage the unique suffix
         base_name = os.path.splitext(original_filename)[0]
         
-        # UPLOAD LOGIC FIX
+        # Upload with chunking for large files
         upload_result = cloudinary.uploader.upload(
-            file.file, 
+            file.file,
             resource_type="auto",
-            # Remove manual 'format' to prevent .xlsx.pdf issues
-            use_filename=True, 
-            unique_filename=True, # Safety first!
-            overwrite=False       # Don't let users delete each other's files
+            public_id=base_name,
+            filename=original_filename,
+            format=file_extension[1:].lower() if file_extension else None,
+            chunk_size=6000000,  # 6MB chunks ✅ CORRECT
+            use_filename=True,
+            unique_filename=False,
+            overwrite=True
         )
         
         media_url = upload_result.get("secure_url")
-        # Ensure media_type is clean for the frontend
         media_type = file.content_type or upload_result.get("resource_type", "unknown")
+        
+        # Prevent connection pool exhaustion
+        await asyncio.sleep(0.1)
         logging.info(f"Uploaded {original_filename} -> {media_url}")
+        #logging.info(f"Uploaded {original_filename} ({file.size or 'unknown'} bytes) -> {media_url}")
 
-    # Retry logic for MongoDB
+    # SINGLE insert with retry logic ✅ FIXED STRUCTURE
     for attempt in range(3):
         try:
             new_id = await get_next_id()
             task_doc = {
-                "id": new_id, 
-                "text": text, 
-                "media_url": media_url, 
+                "id": new_id,
+                "text": text,
+                "media_url": media_url,
                 "media_type": media_type,
-                "media_extension": file_extension.replace(".", "") if file_extension else None, 
+                "media_extension": file_extension,
                 "original_filename": original_filename,
-                "owner": current_user["username"], 
+                "owner": current_user["username"],
                 "created_at": datetime.now(timezone.utc),
                 "is_completed": False
             }
             await tasks_collection.insert_one(task_doc)
-            return {"status": "success", "id": new_id, "media_url": media_url}
+            return {
+                "status": "success",
+                "id": new_id,
+                "media_url": media_url,
+                "media_extension": file_extension,
+                "media_type": media_type,
+                "original_filename": original_filename
+            }
         except Exception as e:
-            if attempt == 2: raise HTTPException(status_code=503, detail="Save failed")
+            #logging.error(f"Insert attempt {attempt + 1} failed: {e}")
+            if attempt == 2: raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
             await asyncio.sleep(0.2)
 
     # This line is UNREACHABLE with proper error handling
