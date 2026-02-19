@@ -1,9 +1,11 @@
 import os
+import asyncio
 import logging
+import ssl
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional, List , Any
 
-from fastapi import FastAPI, HTTPException, Header, Request, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Depends #headeer
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
@@ -35,7 +37,19 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # --- DATABASE CONNECTION ---
-client = AsyncIOMotorClient(MONGO_URI)
+client = AsyncIOMotorClient(MONGO_URI , 
+                            serverSelectionTimeoutMS=60000, # 60sectimout
+                            connectTimeoutMS=30000,
+                            socketTimeoutMS = 30000,
+                             maxPoolSize=50, # Handles concurrent uploads/downloads better
+                             minPoolSize=5,
+                             maxIdleTimeMS =30000,
+                             maxConnecting=10,
+                             retryWrites=True,
+                             retryReads=True,
+                             tlsAllowInvalidCertificates= False, #security
+                             ssl_cert_reqs=ssl.CERT_NONE, # Atlas SSL fix put REQUIRE instead of NONE for production with valid certs
+)
 db_mongo = client.taskflow_db 
 tasks_collection = db_mongo.tasks
 users_collection = db_mongo.users
@@ -51,6 +65,8 @@ class Task(BaseModel):
     text: Optional[str] = ""
     media_url: Optional[str] = None
     media_type: Optional[str] = None
+    media_extension: Optional[str] = None
+    original_filename: Optional[str] = None
     owner: str # The username of the creator
     created_at: datetime 
     is_completed: bool = False
@@ -61,37 +77,57 @@ class Token(BaseModel):
     is_admin: bool
 
 # --- AUTH HELPERS ---
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password): return pwd_context.hash(password)
 
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
 
-# --- AUTH HELPERS ---
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(hours=24)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
 
+#--fixing
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
         username = payload.get("sub")
-        user = await users_collection.find_one({"username": username})
-        if not user: raise HTTPException(status_code=401)
-        return user
-    except: raise HTTPException(status_code=401, details = "Invalid Session")
-
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Retry logic for MongoDB hiccups
+        for attempt in range(3):
+            try:
+                user = await users_collection.find_one({"username": username})
+                if user: return user
+                raise HTTPException(status_code=401, detail="User not found")
+            except Exception as mongo_err:
+                if attempt == 2:  # Final attempt failed
+                    logging.error(f"MongoDB error after 3 attempts: {mongo_err}")
+                    raise HTTPException(status_code=503, detail="Database temporarily unavailable")
+                logging.warning(f"MongoDB attempt {attempt+1} failed: {mongo_err}, retrying...")
+                await asyncio.sleep(0.5)  # ✅ INSIDE except block
+        # Unreachable with proper error handling above
+        raise HTTPException(status_code=401, detail="User lookup failed")
+    except JWTError: raise HTTPException(status_code=401, detail="Invalid token")
+    except HTTPException: raise  # Re-raise HTTP exceptions
+    except Exception: raise HTTPException(status_code=401, detail="Invalid Session")
+    
+        
+        
+                
+        #logging.error(f"Unexpected error in get_current_user: {str(Exception)}")
 async def get_next_id():
     last_task = await tasks_collection.find_one(sort=[("id", -1)])
     return (last_task["id"] + 1) if last_task else 1
+
 
 #-------origins----
 origins = [
     "http://127.0.0.1:5500",    # Local VS Code Live Server
     "http://localhost:5500",    # Local testing
     "https://taskflow-uibest.onrender.com", # Your Render Static Site URL
+    "https://your-production-domain.com"
 ]
 """origins = ["*"]"""  # For testing; change to specific URLs in production!
 
@@ -103,40 +139,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+#app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers =["*"])
 # --- AUTH ROUTES ---
 @app.post("/signup")
 async def signup(user: User):
-    existing = await users_collection.find_one({"username": user.username})
-    if existing: raise HTTPException(status_code=400, detail="User exists")
-    
-    user_doc = {
+    if await users_collection.find_one({"username": user.username}):
+        raise HTTPException(status_code=400, detail="User exists")
+    await users_collection.insert_one({
         "username": user.username,
         "hashed_password": get_password_hash(user.password),
         "is_admin": user.is_admin
-    }
-    await users_collection.insert_one(user_doc)
+    })
     return {"message": "Success"}
+    
+    
 
 @app.post("/login", response_model=Token)
 async def login(user: User):
     db_user = await users_collection.find_one({"username": user.username})
     if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
     token = create_access_token(data={"sub": db_user["username"]})
     return {"access_token": token, "token_type": "bearer", "is_admin": db_user.get("is_admin", False)}
+    
 
 #-------GLobal Routes----
 
-"""app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])"""
+
 
 @app.get("/")
 async def root():
     return {"message": "Backend is running and CORS is configured!", "time": datetime.now(timezone.utc)}
 
 @app.get("/health")
-def health_check():
+async def health_check():
     return {"status": "healthy", "database": "mongodb"}
 
 @app.get("/tasks/stats")
@@ -144,93 +180,102 @@ async def get_stats(current_user: dict = Depends(get_current_user)):
     total = await tasks_collection.count_documents({})
     completed = await tasks_collection.count_documents({"is_completed": True})
     pending = total - completed
-    score = f"{(completed/total)*100 if total > 0 else 0}%"
-
+    score = f"{(completed/total)*100 if total > 0 else 0:.0f}%"
     return {
-        "total": total,
-        "completed": completed,
-        "requested_by": current_user["username"], # Now the variable is "accessed"!
+        "total": total,"completed": completed,"requested_by": current_user["username"], # Now the variable is "accessed"!
         "pending": pending,
         "completion_score": score,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     }
+
 # --- TASK ROUTES (with Search) ---
 @app.get("/tasks", response_model=List[Task])
 async def get_tasks(Search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    query = {}
-    if Search:
+    query = {} if not Search else {
+        "$or": [{"text": {"$regex": Search, "$options": "i"}}, {"owner": {"$regex": Search, "$options": "i"}}]
+    }
+    cursor = tasks_collection.find(query).sort("created_at", -1)
+    tasks = await cursor.to_list(length=100)
+    return tasks
+
+    """if Search:
         query = {
             "$or": [
                 {"text": {"$regex": Search, "$options": "i"}},
                 {"title": {"$regex": Search, "$options": "i"}},
                 {"owner": {"$regex": Search, "$options": "i"}} # Can also search by username!
             ]
-        }
-    
-    cursor = tasks_collection.find(query).sort("created_at", -1)
-    tasks = await cursor.to_list(length=100)
-    return tasks
-
-import os
+        }"""
 
 @app.post("/tasks")
-async def create_task(
-    text: str = Form(""), 
-    file: UploadFile = File(None), 
-    current_user: dict = Depends(get_current_user)
-):
-    media_url = None
-    media_type = None
-    original_filename = None
-    file_extension = None
+async def create_task(text: str = Form(""), file: UploadFile = File(None), current_user: dict = Depends(get_current_user)):
+    media_url = media_type = original_filename = file_extension = None
     
     if file:
         original_filename = file.filename or "unknown"
-        # Extract full extension (handles .tar.gz etc.)
         _, file_extension = os.path.splitext(original_filename)
-        base_name = os.path.splitext(original_filename)[0]  # Name without ext
+        base_name = os.path.splitext(original_filename)[0]
         
-        # Upload with explicit filename + format to preserve identity
+        # Upload with chunking for large files
         upload_result = cloudinary.uploader.upload(
             file.file,
             resource_type="auto",
-            public_id=f"{base_name}",  # Base name
-            filename=original_filename,  # Full original name
-            format=file_extension[1:].lower() if file_extension else None,  # e.g., 'docx'
+            public_id=base_name,
+            filename=original_filename,
+            format=file_extension[1:].lower() if file_extension else None,
+            chunk_size=6000000,  # 6MB chunks ✅ CORRECT
             use_filename=True,
-            unique_filename=False,  # Avoid renaming clashes
-            overwrite=True  # Replace if exists
+            unique_filename=False,
+            overwrite=True
         )
         
         media_url = upload_result.get("secure_url")
         media_type = file.content_type or upload_result.get("resource_type", "unknown")
-        # Log for debug
-        logging.info(f"Uploaded {original_filename} -> {media_url} (type: {media_type}, ext: {file_extension})")
+        
+        # Prevent connection pool exhaustion
+        await asyncio.sleep(0.1)
+        logging.info(f"Uploaded {original_filename} -> {media_url}")
+        #logging.info(f"Uploaded {original_filename} ({file.size or 'unknown'} bytes) -> {media_url}")
 
-    new_id = await get_next_id()
+    # SINGLE insert with retry logic ✅ FIXED STRUCTURE
+    for attempt in range(3):
+        try:
+            new_id = await get_next_id()
+            task_doc = {
+                "id": new_id,
+                "text": text,
+                "media_url": media_url,
+                "media_type": media_type,
+                "media_extension": file_extension,
+                "original_filename": original_filename,
+                "owner": current_user["username"],
+                "created_at": datetime.now(timezone.utc),
+                "is_completed": False
+            }
+            await tasks_collection.insert_one(task_doc)
+            return {
+                "status": "success",
+                "id": new_id,
+                "media_url": media_url,
+                "media_extension": file_extension,
+                "media_type": media_type,
+                "original_filename": original_filename
+            }
+        except Exception as e:
+            #logging.error(f"Insert attempt {attempt + 1} failed: {e}")
+            if attempt == 2: raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
+            await asyncio.sleep(0.2)
 
-    task_doc = {
-        "id": new_id,
-        "text": text,
-        "media_url": media_url,
-        "media_type": media_type,
-        "media_extension": file_extension,  # NEW: Store for frontend
-        "original_filename": original_filename,  # NEW: For reliable downloads
-        "owner": current_user["username"],
-        "created_at": datetime.now(timezone.utc),
-        "is_completed": False
-    }
-    await tasks_collection.insert_one(task_doc)
-    return {"status": "success", "id": new_id, "media_url": media_url, "media_extension": file_extension , "media_type": media_type , "original_filename": original_filename}
+    # This line is UNREACHABLE with proper error handling
+    #raise HTTPException(status_code=500, detail="Unexpected error")
 
 @app.delete("/tasks/clear")
 async def clear_all_tasks(user=Depends(get_current_user)):
     # Security Check: Only let Admin do this!
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
+    if not user.get("is_admin"): raise HTTPException(status_code=403, detail="Not authorized")
     await tasks_collection.delete_many({}) # Deletes everything
     return {"message": "All tasks cleared"}
+    
 
 @app.delete("/tasks/{task_id}")
 async def delete_task(task_id: int, current_user: dict = Depends(get_current_user)):
@@ -239,7 +284,7 @@ async def delete_task(task_id: int, current_user: dict = Depends(get_current_use
 
     # Check: Owner OR Admin?
     if task["owner"] == current_user["username"] or current_user.get("is_admin"):
-        await tasks_collection.delete_one({"id": task_id})
-        return {"message": "Deleted"}
+        raise HTTPException(status_code=403, detail="Not authorized to delete this content")
+    await tasks_collection.delete_one({"id": task_id})
+    return {"message": "Deleted"}
     
-    raise HTTPException(status_code=403, detail="Not authorized to delete this content")
