@@ -267,6 +267,14 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
                 raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
             await asyncio.sleep(0.2)
 
+@app.patch("/tasks/{task_id}/toggle")
+async def toggle_task(task_id: int, current_user: dict = Depends(get_current_user)):
+    task = await tasks_collection.find_one({"id": task_id})
+    if not task: raise HTTPException(status_code=404)
+    new_status = not task.get("is_completed", False)
+    await tasks_collection.update_one({"id": task_id}, {"$set": {"is_completed": new_status}})
+    return {"is_completed": new_status}            
+
 @app.delete("/tasks/clear")
 async def clear_all_tasks(user=Depends(get_current_user)):
     # Security Check: Only let Admin do this!
