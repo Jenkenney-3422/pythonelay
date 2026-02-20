@@ -350,39 +350,72 @@ function renderTask(task) {
     `;
 }
 
-    async function addTask() {
-        const text = document.getElementById('taskInput').value;
-        const file = document.getElementById('mediaInput').files[0];
-        const token = localStorage.getItem('token');
-        if(!text && !file) return;
+async function addTask() {
+    const text = document.getElementById('taskInput').value;
+    const file = document.getElementById('mediaInput').files[0];
+    const token = localStorage.getItem('token');
+    
+    if(!text && !file) return;
 
-        const loader = document.getElementById('loader');
-        const btnText = document.getElementById('btnText');
-        loader.style.display = 'block';
-        btnText.style.display = 'none';
+    const loader = document.getElementById('loader');
+    const btnText = document.getElementById('btnText');
+    loader.style.display = 'block';
+    btnText.style.display = 'none';
 
-        const formData = new FormData();
-        formData.append('text', text);
-        if(file) formData.append('file', file);
+    const formData = new FormData();
+    formData.append('text', text);
+    if(file) formData.append('file', file);
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/tasks`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-            if(res.ok) {
-                document.getElementById('taskInput').value = '';
-                document.getElementById('mediaInput').value = '';
-                document.getElementById('filePreview').innerText = '';
-                fetchTasks();
+    try {
+        const res = await fetch(`${API_BASE_URL}/tasks`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        const response = await res.json();  // ✅ PARSE JSON
+
+        if(res.ok) {
+            // ✅ CLEAR INPUTS
+            document.getElementById('taskInput').value = '';
+            document.getElementById('mediaInput').value = '';
+            
+            // ✅ SHOW UPLOAD PREVIEW (if file uploaded)
+            if(response.media_url) {
+                showFilePreview(response);  // ✅ Use helper function
             }
-        } catch (err) { alert("Upload failed"); }
-        finally {
-            loader.style.display = 'none';
-            btnText.style.display = 'block';
+            
+            fetchTasks();  // ✅ Refresh list
         }
+    } catch (err) {
+        alert("Upload failed: " + err.message);
+    } finally {
+        loader.style.display = 'none';
+        btnText.style.display = 'block';
     }
+}
+
+// ✅ HELPER FUNCTION - Add this with your other functions
+function showFilePreview(response) {
+    const thumbPreview = document.getElementById('thumbPreview');
+    const thumbImg = document.getElementById('thumbImg');
+    const thumbPlaceholder = document.getElementById('thumbPlaceholder');
+    const previewDownload = document.getElementById('previewDownload');
+    
+    // Show thumbnail based on media type
+    if(response.media_type?.includes('video')) {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1/').replace(/.[^/.]+$/, '.jpg');
+    } else {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
+    }
+    
+    thumbImg.style.display = 'block';
+    thumbPlaceholder.style.display = 'none';
+    previewDownload.href = response.media_url;
+    previewDownload.textContent = `📥 ${response.original_filename || 'Download file'}`;
+    previewDownload.download = response.original_filename || 'file';
+    previewDownload.style.display = 'block';
+}
     
     async function clearAllTasks() {
     const confirmation = confirm("⚠️ DANGER: This will delete EVERY task in the global database forever. Are you absolutely sure?");
