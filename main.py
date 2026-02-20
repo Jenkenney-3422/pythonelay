@@ -215,15 +215,18 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
         original_filename = file.filename or "unknown"
         _, file_extension = os.path.splitext(original_filename)
         base_name = os.path.splitext(original_filename)[0]
+        unique_id = f"{base_name}_{int(datetime.now().timestamp())}"
         
-        # Upload with chunking for large files
+        # ✅ FIXED: Use stream + unique public_id
         upload_result = cloudinary.uploader.upload(
-            file.file,
+            file.file,  # ✅ STREAM - no .read() for large files
             resource_type="auto",
-            public_id=base_name,
+            folder="uploads",
+            public_id=unique_id,  # ✅ UNIQUE - prevents overwrites
+            eager=[{"width": 200, "height": 200, "crop": "thumb", "gravity": "face"}],
             filename=original_filename,
             format=file_extension[1:].lower() if file_extension else None,
-            chunk_size=6000000,  # 6MB chunks ✅ CORRECT
+            chunk_size=6000000,  # ✅ Perfect for videos
             use_filename=True,
             unique_filename=False,
             overwrite=True
@@ -232,12 +235,10 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
         media_url = upload_result.get("secure_url")
         media_type = file.content_type or upload_result.get("resource_type", "unknown")
         
-        # Prevent connection pool exhaustion
-        await asyncio.sleep(0.1)
+        await file.close()  # ✅ Clean up file stream
         logging.info(f"Uploaded {original_filename} -> {media_url}")
-        #logging.info(f"Uploaded {original_filename} ({file.size or 'unknown'} bytes) -> {media_url}")
 
-    # SINGLE insert with retry logic ✅ FIXED STRUCTURE
+    # Rest of your code is PERFECT ✅
     for attempt in range(3):
         try:
             new_id = await get_next_id()
@@ -262,12 +263,9 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
                 "original_filename": original_filename
             }
         except Exception as e:
-            #logging.error(f"Insert attempt {attempt + 1} failed: {e}")
-            if attempt == 2: raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
+            if attempt == 2: 
+                raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
             await asyncio.sleep(0.2)
-
-    # This line is UNREACHABLE with proper error handling
-    #raise HTTPException(status_code=500, detail="Unexpected error")
 
 @app.delete("/tasks/clear")
 async def clear_all_tasks(user=Depends(get_current_user)):
