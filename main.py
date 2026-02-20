@@ -111,7 +111,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="User lookup failed")
     except JWTError: raise HTTPException(status_code=401, detail="Invalid token")
     except HTTPException: raise  # Re-raise HTTP exceptions
-    except Exception: raise HTTPException(status_code=401, detail="Invalid Session")
+    except Exception as e: 
+        logging.error(f"Unexpected error in get_current_user: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Session")
     
         
         
@@ -286,11 +288,13 @@ async def clear_all_tasks(user=Depends(get_current_user)):
 @app.delete("/tasks/{task_id}")
 async def delete_task(task_id: int, current_user: dict = Depends(get_current_user)):
     task = await tasks_collection.find_one({"id": task_id})
-    if not task: raise HTTPException(status_code=404)
+    if not task: 
+        raise HTTPException(status_code=404, detail="Task not found")
 
-    # Check: Owner OR Admin?
-    if task["owner"] == current_user["username"] or current_user.get("is_admin"):
+    # ✅ THE FIX: Raise 403 ONLY if the user is NEITHER the owner NOR an admin
+    if task["owner"] != current_user["username"] and not current_user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Not authorized to delete this content")
+
     await tasks_collection.delete_one({"id": task_id})
     return {"message": "Deleted"}
     
