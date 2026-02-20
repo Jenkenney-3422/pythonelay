@@ -113,6 +113,38 @@
     let isLoginMode = true;
 
     // --- 1. AUTHENTICATION LOGIC ---
+    // helper function
+    function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // ✅ HELPER FUNCTION - Add this with your other functions
+    function showFilePreview(response) {
+    const thumbPreview = document.getElementById('thumbPreview');
+    const thumbImg = document.getElementById('thumbImg');
+    const thumbPlaceholder = document.getElementById('thumbPlaceholder');
+    const previewDownload = document.getElementById('previewDownload');
+
+      
+    
+    // Show thumbnail based on media type
+    if(response.media_type?.includes('video')) {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1/').replace(/.[^/.]+$/, '.jpg');
+    } else {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
+    }
+
+    if (!thumbImg || !response.media_url) return;
+    thumbImg.src = response.media_url;  // Safe set
+    thumbImg.style.display = 'block';
+    thumbPlaceholder.style.display = 'none';
+    previewDownload.href = response.media_url;
+    previewDownload.textContent = `📥 ${response.original_filename || 'Download file'}`;
+    previewDownload.download = response.original_filename || 'file';
+    previewDownload.style.display = 'block';
+    }
+
     function toggleAuthMode() {
         isLoginMode = !isLoginMode;
         document.getElementById('authTitle').innerText = isLoginMode ? 'Login' : 'Sign Up';
@@ -180,11 +212,7 @@
     }
 
     // --- 2. TASK LOGIC ---
-    // helper function
-    function escapeHtml(text) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
+
     async function fetchTasks() {
         const searchTerm = document.getElementById('searchInput').value;
         const token = localStorage.getItem('token');
@@ -339,6 +367,7 @@ function renderTask(task) {
                     ` : ''}
                     <p class="text-[10px] text-gray-400 mt-1">${new Date(task.created_at).toLocaleDateString('en-IN')}</p>
                 </div>
+                <button onclick="toggleComplete('${task.id}')" ...>${task.is_completed ? '✅' : '○'}</button>
                 
                 <!-- COMPLETE BUTTON -->
                 <button onclick="toggleComplete('${task.id}')" 
@@ -395,27 +424,7 @@ async function addTask() {
     }
 }
 
-// ✅ HELPER FUNCTION - Add this with your other functions
-function showFilePreview(response) {
-    const thumbPreview = document.getElementById('thumbPreview');
-    const thumbImg = document.getElementById('thumbImg');
-    const thumbPlaceholder = document.getElementById('thumbPlaceholder');
-    const previewDownload = document.getElementById('previewDownload');
-    
-    // Show thumbnail based on media type
-    if(response.media_type?.includes('video')) {
-        thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1/').replace(/.[^/.]+$/, '.jpg');
-    } else {
-        thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
-    }
-    
-    thumbImg.style.display = 'block';
-    thumbPlaceholder.style.display = 'none';
-    previewDownload.href = response.media_url;
-    previewDownload.textContent = `📥 ${response.original_filename || 'Download file'}`;
-    previewDownload.download = response.original_filename || 'file';
-    previewDownload.style.display = 'block';
-}
+
     
     async function clearAllTasks() {
     const confirmation = confirm("⚠️ DANGER: This will delete EVERY task in the global database forever. Are you absolutely sure?");
