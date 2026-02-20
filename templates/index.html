@@ -131,23 +131,25 @@
     const thumbImg = document.getElementById('thumbImg');
     const thumbPlaceholder = document.getElementById('thumbPlaceholder');
     const previewDownload = document.getElementById('previewDownload');
+    const url = response.media_url;
+    const ext = response.media_extension ? response.media_extension.replace('.', '').toLowerCase() : "file";
 
-      
     
     // Show thumbnail based on media type
-    if(response.media_type?.includes('video')) {
+    /*if(response.media_type?.includes('video')) {
         thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1/').replace(/.[^/.]+$/, '.jpg');
     } else {
         thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
-    }
+    }*/
 
     if (!thumbImg || !response.media_url) return;
     // Reset visibilty
     thumbImg.style.display = 'none';
     thumbPlaceholder.style.display = 'block';
+    thumbPlaceholder.textContent = '📄'; // Default icon
 
     // only try to show a thumbnail if it's an image or video (Cloudinary can generate these)
-    if (response.media_type?.includes('image')) {
+    /*if (response.media_type?.includes('image')) {
         thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
         thumbImg.style.display = 'block';
         thumbPlaceholder.style.display = 'none';
@@ -155,10 +157,22 @@
         thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1,w_200,h_200,c_thumb/').replace(/\.[^/.]+$/, '.jpg');
         thumbImg.style.display = 'block';
         thumbPlaceholder.style.display = 'none';
+    }*/
+    if (response.media_type?.includes('image')) {
+        thumbImg.src = url;
+        thumbImg.style.display = 'block';
+        thumbPlaceholder.style.display = 'none';
+    } else if (ext === 'pdf') {
+        thumbPlaceholder.innerText = "📕";
+    } else if (['xls', 'xlsx'].includes(ext)) {
+        thumbPlaceholder.innerText = "📗";
+    } else if (['doc', 'docx'].includes(ext)) {
+        thumbPlaceholder.innerText = "📘";
     }
 
+    
     thumbImg.src = response.media_url;  // Safe set
-    previewDownload.href = response.media_url;
+    previewDownload.href = response.media_url || url;
     previewDownload.textContent = `📥 ${response.original_filename || 'Download file'}`;
     previewDownload.download = response.original_filename || 'file';
     previewDownload.style.display = 'block';
@@ -277,44 +291,59 @@ function renderTask(task) {
     const currentUser = localStorage.getItem('username');
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
-    // 1. Logic to build the Media Player / Document Card
     if (task.media_url) {
         const url = task.media_url;
-        let detectedExt = task.media_extension || '';
-        const filename = task.original_filename || 'file';
-        
-        if (!detectedExt) {
-            try {
-                const urlObj = new URL(url);
-                detectedExt = urlObj.pathname.split('.').pop().toLowerCase();
-            } catch(e) { detectedExt = 'file'; }
+        // 1. Get extension safely from URL if metadata is missing
+        let ext = task.media_extension ? task.media_extension.replace('.', '').toLowerCase() : "";
+        if (!ext) {
+            ext = url.split('.').pop().split(/\#|\?/)[0].toLowerCase();
         }
 
-        let player = "";
-        if (['mp4', 'webm', 'mov'].includes(detectedExt)) {
-            player = `<video controls class="rounded-lg w-full bg-black"><source src="${url}"></video>`;
-        } else if (['mp3', 'wav', 'm4a'].includes(detectedExt)) {
-            player = `<audio controls class="w-full mt-2"><source src="${url}"></audio>`;
-        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(detectedExt)) {
-            player = `<img src="${url}" class="rounded-xl w-full border shadow-sm cursor-zoom-in" onclick="window.open('${url}')">`;
-        } else {
-            // Document Card Style
-            player = `
-                <div class="flex items-center gap-3 p-3 bg-white border-2 border-dashed rounded-xl cursor-pointer" onclick="window.open('${url}')">
-                    <span class="text-2xl">📄</span>
-                    <div class="overflow-hidden">
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter">${detectedExt} RESOURCE</p>
-                        <p class="text-xs font-bold text-blue-600 truncate">${filename}</p>
+        let previewContent = "";
+        
+        // 2. Identify Group
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+        const isVideo = ['mp4', 'webm', 'mov', 'm4v'].includes(ext);
+        const isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(ext);
+
+        if (isImage) {
+            // Use Cloudinary thumbnail transform for speed
+            const thumbUrl = url.includes('upload/') ? url.replace('upload/', 'upload/w_400,c_limit/') : url;
+            previewContent = `<img src="${thumbUrl}" class="rounded-xl w-full border shadow-sm cursor-zoom-in" onclick="window.open('${url}')">`;
+        } 
+        else if (isVideo) {
+            previewContent = `<video controls class="rounded-xl w-full bg-black shadow-inner"><source src="${url}"></video>`;
+        } 
+        else if (isAudio) {
+            previewContent = `<div class="p-3 bg-white border rounded-xl"><audio controls class="w-full h-8"><source src="${url}"></audio></div>`;
+        } 
+        else {
+            // 3. Document/File Icon Mapping
+            let icon = "📄";
+            let color = "bg-gray-50 text-gray-500 border-gray-200";
+            
+            if (['pdf'].includes(ext)) { icon = "📕"; color = "bg-red-50 text-red-600 border-red-100"; }
+            else if (['doc', 'docx'].includes(ext)) { icon = "📘"; color = "bg-blue-50 text-blue-600 border-blue-100"; }
+            else if (['xls', 'xlsx', 'csv'].includes(ext)) { icon = "📗"; color = "bg-green-50 text-green-600 border-green-100"; }
+            else if (['zip', 'rar', '7z'].includes(ext)) { icon = "📦"; color = "bg-purple-50 text-purple-600 border-purple-100"; }
+            else if (['ppt', 'pptx'].includes(ext)) { icon = "📙"; color = "bg-orange-50 text-orange-600 border-orange-100"; }
+
+            previewContent = `
+                <div class="flex items-center gap-4 p-4 ${color} rounded-2xl border-2 border-dashed cursor-pointer hover:bg-opacity-80 transition-all" onclick="window.open('${url}')">
+                    <div class="text-3xl">${icon}</div>
+                    <div class="flex flex-col overflow-hidden">
+                        <span class="text-[9px] font-black uppercase tracking-widest opacity-60">${ext || 'FILE'}</span>
+                        <span class="text-xs font-bold truncate">${task.original_filename || 'View Resource'}</span>
                     </div>
                 </div>`;
         }
 
         mediaHtml = `
             <div class="mt-3">
-                ${player}
-                <button onclick="downloadFile('${url}', '${filename}')"
-                        class="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black hover:bg-blue-600 hover:text-white transition-all">
-                    DOWNLOAD ASSET 📥
+                ${previewContent}
+                <button onclick="downloadFile('${url}', '${task.original_filename || 'file'}')"
+                        class="mt-2 inline-flex items-center px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black hover:bg-blue-600 hover:text-white transition-all uppercase">
+                    Download Asset 📥
                 </button>
             </div>`;
     }
@@ -323,7 +352,6 @@ function renderTask(task) {
         ? `<button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-500 transition-colors ml-2">✕</button>` 
         : "";
 
-    // 2. The Final HTML Return
     return `
         <li class="task-item bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-4">
             <div class="flex items-start justify-between">
