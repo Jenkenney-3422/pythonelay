@@ -78,7 +78,13 @@
                         <div id="loader" class="spinner"></div>
                     </button>
                 </div>
-                <div id="filePreview" class="ml-10 mt-1 space-y-1">
+                <div id="filePreview" class="ml-10 mt-1 space-y-1" style ="display: none;">
+                    <p id="selectedFileName" class="text-[10px] text-gray-500 font-bold italic"></p>
+                    <div id="thumbPreview" class="w-16 h-16 ...">
+                       <img id="thumbImg" ...>
+                       <span id="thumbPlaceholder" ...>📄</span>
+                    </div>
+                    <a id="previewDownload" ...>📥 Download</a>
                 <!-- ✅ THUMBNAIL PREVIEW -->
         <div id="thumbPreview" class="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                 <img id="thumbImg" class="w-full h-full object-cover" style="display:none;">
@@ -136,9 +142,22 @@
     }
 
     if (!thumbImg || !response.media_url) return;
+    // Reset visibilty
+    thumbImg.style.display = 'none';
+    thumbPlaceholder.style.display = 'block';
+
+    // only try to show a thumbnail if it's an image or video (Cloudinary can generate these)
+    if (response.media_type?.includes('image')) {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'image/upload/w_200,h_200,c_thumb/');
+        thumbImg.style.display = 'block';
+        thumbPlaceholder.style.display = 'none';
+    } else if (response.media_type?.includes('video')) {
+        thumbImg.src = response.media_url.replace('raw/upload/', 'video/upload/so_1,w_200,h_200,c_thumb/').replace(/\.[^/.]+$/, '.jpg');
+        thumbImg.style.display = 'block';
+        thumbPlaceholder.style.display = 'none';
+    }
+
     thumbImg.src = response.media_url;  // Safe set
-    thumbImg.style.display = 'block';
-    thumbPlaceholder.style.display = 'none';
     previewDownload.href = response.media_url;
     previewDownload.textContent = `📥 ${response.original_filename || 'Download file'}`;
     previewDownload.download = response.original_filename || 'file';
@@ -448,10 +467,17 @@ window.onload = () => {
     if(localStorage.getItem('token')) showDashboard();
     
     document.getElementById('mediaInput').addEventListener('change', function() {
-        const preview = document.getElementById('filePreview');
-        preview.innerText = this.files[0] ? `📎 ${this.files[0].name}` : "";
-        preview.style.display = this.files[0] ? 'block' : 'none';  // ← FIXED: Properly hides empty preview
-    });
+    const previewContainer = document.getElementById('filePreview');
+    const nameLabel = document.getElementById('selectedFileName');
+    
+    if (this.files[0]) {
+        previewContainer.style.display = 'block';
+        nameLabel.innerText = `📎 Selected: ${this.files[0].name}`;
+    } else {
+        previewContainer.style.display = 'none';
+        nameLabel.innerText = "";
+    }
+ });
 }
 </script>
 </body>
