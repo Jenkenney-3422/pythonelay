@@ -225,7 +225,7 @@ async def create_task(text: str = Form(""), file: UploadFile = File(None), curre
             resource_type="auto",
             folder="uploads",
             public_id=unique_id,  # ✅ UNIQUE - prevents overwrites
-            eager=[{"width": 200, "height": 200, "crop": "thumb", "gravity": "face"}],
+            #eager=[{"width": 200, "height": 200, "crop": "thumb", "gravity": "face"}],
             filename=original_filename,
             format=file_extension[1:].lower() if file_extension else None,
             chunk_size=6000000,  # ✅ Perfect for videos
