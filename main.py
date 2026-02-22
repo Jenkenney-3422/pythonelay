@@ -2,8 +2,12 @@ import os
 import asyncio
 import logging
 import ssl
+import hashlib
+import hmac
+from cloudinary.utils import api_sign_request
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List , Any
+
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Depends ,Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +22,7 @@ import cloudinary.uploader
 
 # --- INITIALIZATION ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-app = FastAPI(title="TASKFLOW PRO - Secure Edition")
+app = FastAPI(title="TASKFLOW PRO - Secure Edition Signed Upload API", version="1.0")
 
 # --- CONFIGURATION ---
 MONGO_URI = os.getenv("MONGODB_URI")
@@ -76,6 +80,14 @@ class Token(BaseModel):
     token_type: str
     is_admin: bool
 
+class UploadSignature(BaseModel):
+    signature: str
+    timestamp: str
+    api_key : str
+    cloud_name: str
+    public_id: str
+    folder: str    
+
 # --- AUTH HELPERS ---
 def get_password_hash(password): return pwd_context.hash(password)
 
@@ -122,6 +134,80 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 async def get_next_id():
     last_task = await tasks_collection.find_one(sort=[("id", -1)])
     return (last_task["id"] + 1) if last_task else 1
+
+# --- NEW: Cloudinary Signed Upload Helper ---
+# Use the built-in Cloudinary utility - it's much more reliable!
+
+@app.post("/sign-upload", response_model=UploadSignature)
+async def get_upload_signature(
+    original_filename: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """🚀 Frontend calls this FIRST to get permission to upload"""
+    
+    timestamp = int(datetime.now().timestamp())
+    base_name = os.path.splitext(original_filename)[0]
+    # Clean up filename (remove spaces/special chars) to avoid URL issues
+    clean_name = "".join(x for x in base_name if x.isalnum())
+    unique_public_id = f"{current_user['username']}/{clean_name}_{timestamp}"
+    folder = "taskflow_uploads"
+
+    # 1. These params MUST match exactly what the frontend sends
+    params_to_sign = {
+        "public_id": unique_public_id,
+        "folder": folder,
+        "timestamp": timestamp,
+    }
+
+    # 2. Use the SDK to sign (it handles sorting and hashing for you)
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    signature = api_sign_request(params_to_sign, api_secret)
+
+    return UploadSignature(
+        signature=signature,
+        timestamp=str(timestamp),
+        api_key=os.getenv("CLOUDINARY_API_KEY"),
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+        public_id=unique_public_id,
+        folder=folder
+    )
+
+# --- SIMPLIFIED TASK CREATION (no file handling!) ---
+@app.post("/tasks")
+async def create_task(
+    text: str = Form(""),
+    media_url: Optional[str] = Form(None),
+    media_type: Optional[str] = Form(None),
+    media_extension: Optional[str] = Form(None),
+    original_filename: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """📱 Frontend sends task data AFTER Cloudinary upload completes"""
+    
+    for attempt in range(3):
+        try:
+            new_id = await get_next_id()
+            task_doc = {
+                "id": new_id,
+                "text": text,
+                "media_url": media_url,
+                "media_type": media_type,
+                "media_extension": media_extension,
+                "original_filename": original_filename,
+                "owner": current_user["username"],
+                "created_at": datetime.now(timezone.utc),
+                "is_completed": False
+            }
+            await tasks_collection.insert_one(task_doc)
+            return {
+                "status": "success",
+                "id": new_id,
+                "task": task_doc
+            }
+        except Exception as e:
+            if attempt == 2: 
+                raise HTTPException(status_code=503, detail="Database save failed after 3 retries")
+            await asyncio.sleep(0.2)
 
 
 #-------origins----

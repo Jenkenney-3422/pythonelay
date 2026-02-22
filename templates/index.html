@@ -74,6 +74,9 @@
                     <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z">
                     <button onclick="document.getElementById('mediaInput').click()" class="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition">📎</button>
                     <input id="taskInput" type="text" placeholder="Share something..." class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
+                    <div class="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                    <div id="uploadProgress" class="bg-blue-600 h-full text-[10px] text-white text-center leading-4 transition-all" style="width: 0%"></div>
+                    </div>
                     <button id="sendBtn" onclick="addTask()" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
                         <span id="btnText">Send</span>
                         <div id="loader" class="spinner"></div>
@@ -376,7 +379,7 @@ function renderTask(task) {
     `;
 }
 
-async function addTask() {
+/*async function addTask() {
     const text = document.getElementById('taskInput').value;
     const file = document.getElementById('mediaInput').files[0];
     const token = localStorage.getItem('token');
@@ -419,7 +422,74 @@ async function addTask() {
         loader.style.display = 'none';
         btnText.style.display = 'block';
     }
+}*/
+async function saveTask() {
+    const text = document.getElementById('taskInput').value;
+    const file = document.getElementById('mediaInput').files[0];
+    const btn = document.getElementById('saveBtn');
+
+    if (!text && !file) return;
+    btn.disabled = true;
+
+    try {
+        let mediaData = { url: null, type: null, ext: null, name: null };
+
+        if (file) {
+            // STEP 1: Get Signature from Backend
+            const sigFormData = new FormData();
+            sigFormData.append('original_filename', file.name);
+
+            const sigRes = await fetch(`${API_BASE_URL}/sign-upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                body: sigFormData
+            });
+            const sigData = await sigRes.json();
+
+            // STEP 2: Upload to Cloudinary with Signature
+            const cloudFormData = new FormData();
+            cloudFormData.append('file', file);
+            cloudFormData.append('api_key', sigData.api_key);
+            cloudFormData.append('timestamp', sigData.timestamp);
+            cloudFormData.append('signature', sigData.signature);
+            cloudFormData.append('public_id', sigData.public_id);
+            cloudFormData.append('folder', sigData.folder);
+
+            const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloud_name}/auto/upload`, {
+                method: 'POST',
+                body: cloudFormData
+            });
+            const cloudJson = await cloudRes.json();
+            
+            mediaData = {
+                url: cloudJson.secure_url,
+                type: cloudJson.resource_type,
+                ext: cloudJson.format,
+                name: file.name
+            };
+        }
+
+        // STEP 3: Save Task to Backend
+        const taskFormData = new FormData();
+        taskFormData.append('text', text);
+        taskFormData.append('media_url', mediaData.url || "");
+        taskFormData.append('media_type', mediaData.type || "");
+        taskFormData.append('media_extension', mediaData.ext || "");
+        taskFormData.append('original_filename', mediaData.name || "");
+
+        await fetch(`${API_BASE_URL}/tasks`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: taskFormData
+        });
+
+        location.reload();
+    } catch (err) {
+        alert("Upload failed: " + err.message);
+        btn.disabled = false;
+    }
 }
+
 
 
     
