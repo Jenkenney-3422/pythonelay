@@ -66,21 +66,25 @@
             </div>
         </div>
 
-        <div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">● API Online</div>
+        <!--<div id="status" class="text-[10px] font-semibold mb-4 text-gray-400 uppercase tracking-widest">● API Online</div>-->
 
         <div class="space-y-4 mb-4">
+            <div id="progressContainer" class="w-full bg-gray-100 rounded-full h-2 overflow-hidden hidden">
+                <div id="uploadProgress" class="bg-blue-600 h-full transition-all" style="width: 0%"></div>
+            </div>
+            
             <div class="bg-white border rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-400 transition">
                 <div class="flex items-center gap-2">
                     <input type="file" id="mediaInput" style="display: none;" accept="image/*,video/*,audio/*,gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z">
                     <button onclick="document.getElementById('mediaInput').click()" class="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition">📎</button>
                     <input id="taskInput" type="text" placeholder="Share something..." class="flex-1 border-none focus:ring-0 text-sm outline-none bg-transparent">
                     <div class="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                    <div id="uploadProgress" class="bg-blue-600 h-full text-[10px] text-white text-center leading-4 transition-all" style="width: 0%"></div>
+                    
                     <button id="sendBtn" onclick="addTask()" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
                         <span id="btnText">Send</span>
                         <div id="loader" class="spinner"></div>
                     </button>
-                    </div>
+                    
                     
                 </div>
                 <div id="filePreview" class="ml-10 mt-1 space-y-1" style ="display: none;">
