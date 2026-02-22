@@ -82,7 +82,7 @@ class Token(BaseModel):
 
 class UploadSignature(BaseModel):
     signature: str
-    timestamp: int
+    timestamp: str
     api_key : str
     cloud_name: str
     public_id: str
