@@ -379,6 +379,12 @@ function renderTask(task) {
 async function addTask() {
     const text = document.getElementById('taskInput').value;
     const file = document.getElementById('mediaInput').files[0];
+
+    // Add this check
+    if (file && file.size > 10 * 1024 * 1024) { // 10MB Limit
+    alert("File is too big! Please select a file under 10MB.");
+    return;
+    }
     const token = localStorage.getItem('token');
     
     if(!text && !file) return;
@@ -424,7 +430,7 @@ async function addTask() {
             attempts++;
             if (attempts < maxAttempts) {
                 console.log(`Attempt ${attempts} failed. Server might be waking up... retrying in 15s`);
-                await new Promise(resolve => setTimeout(resolve, 15000)); // Wait 15s seconds before retrying
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s seconds before retrying
             } else {
                 alert("Upload failed after multiple attempts. Please wait a moment and try again.");
             }
