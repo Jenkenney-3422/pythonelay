@@ -392,33 +392,48 @@ async function addTask() {
     formData.append('text', text);
     if(file) formData.append('file', file);
 
-    try {
-        const res = await fetch(`${API_BASE_URL}/tasks`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-        });
+    // --- RETRY LOGIC START ---
+    let success = false;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-        const response = await res.json();  // ✅ PARSE JSON
+    while (attempts < maxAttempts && !success) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/tasks`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
 
-        if(res.ok) {
-            // ✅ CLEAR INPUTS
-            document.getElementById('taskInput').value = '';
-            document.getElementById('mediaInput').value = '';
-            
-            // ✅ SHOW UPLOAD PREVIEW (if file uploaded)
-            if(response.media_url) {
-                showFilePreview(response);  // ✅ Use helper function
+            if (res.ok) {
+                const response = await res.json();
+                document.getElementById('taskInput').value = '';
+                document.getElementById('mediaInput').value = '';
+                
+                if(response.media_url) {
+                    showFilePreview(response);
+                }
+                
+                fetchTasks();
+                success = true; // Exit the loop
+            } else {
+                throw new Error("Server responded with an error");
             }
-            
-            fetchTasks();  // ✅ Refresh list
+
+        } catch (err) {
+            attempts++;
+            if (attempts < maxAttempts) {
+                console.log(`Attempt ${attempts} failed. Server might be waking up... retrying in 3s`);
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before retrying
+            } else {
+                alert("Upload failed after multiple attempts. Please wait a moment and try again.");
+            }
         }
-    } catch (err) {
-        alert("Upload failed: " + err.message);
-    } finally {
-        loader.style.display = 'none';
-        btnText.style.display = 'block';
     }
+    // --- RETRY LOGIC END ---
+
+    loader.style.display = 'none';
+    btnText.style.display = 'block';
 }
 
 
